@@ -1,0 +1,287 @@
+{
+  "News": {
+    "title": "آخر الأخبار",
+    "error": "فشل تحميل الأخبار",
+    "loading": "جارٍ التحميل...",
+    "noMore": "لا توجد أخبار أخرى للتحميل",
+    "missingCategory": "الفئة غير موجودة",
+    "readMore": "اقرأ المزيد",
+    "noContent": "لم يتم العثور على محتوى",
+    "invalidParams": "معلمات غير صالحة. يرجى التحقق من الرابط.",
+    "tryAgain": "يرجى المحاولة مرة أخرى لاحقًا أو التواصل مع الدعم.",
+    "notFound": "الخبر غير موجود",
+    "notFoundDescription": "لم يتم العثور على المقال الإخباري المطلوب.",
+    "noDate": "تاريخ النشر غير متوفر",
+    "invalidDate": "تاريخ غير صالح",
+    "noImage": "الصورة غير متوفرة",
+    "views": "{count} مشاهدة",
+    "source": "المصدر"
+  },
+  "AdSection": {
+    "title": "الإعلانات",
+    "content": "هذا إعلان نموذجي. انقر لمزيد من المعلومات!",
+    "cta": "شاهد الآن",
+    "error": "خطأ في تحميل الإعلانات",
+    "noAds": "لا توجد إعلانات للعرض"
+  },
+  "Search": {
+    "title": "البحث",
+    "resultsTitle": "نتائج البحث عن \"{query}\"",
+    "enterSearchTerm": "يرجى إدخال مصطلح البحث",
+    "noResults": "لم يتم العثور على نتائج لبحثك",
+    "noMore": "لا توجد نتائج أخرى للعرض",
+    "error": "حدث خطأ أثناء البحث. يرجى المحاولة مرة أخرى.",
+    "placeholder": "ابحث عن أخبار أو مواضيع أو كلمات مفتاحية...",
+    "button": "بحث",
+    "clear": "مسح",
+    "totalResults": "تم العثور على {count} نتيجة",
+    "totalResultsSingular": "تم العثور على نتيجة واحدة",
+    "loading": "جارٍ تحميل النتائج...",
+    "tryAgain": "حاول مرة أخرى",
+    "searchSuggestions": "اقتراح: تحقق من الإملاء أو جرب كلمات مفتاحية مختلفة"
+  },
+  "NotFound": {
+    "title": "404 - الصفحة غير موجودة",
+    "description": "نأسف، الصفحة التي تبحث عنها غير موجودة أو تم نقلها.",
+    "goHome": "العودة إلى الرئيسية",
+    "search": "البحث في الموقع",
+    "imageAlt": "صورة 404 - الصفحة غير موجودة"
+  },
+  "language": {
+    "en": "الإنجليزية",
+    "fa": "الفارسية",
+    "ar": "العربية"
+  },
+  "Error": {
+    "title": "خطأ"
+  },
+  "menu": {
+    "home": {
+      "title": "آخر الأخبار",
+      "description": "اقرأ آخر الأخبار العالمية في السياسة، الاقتصاد، التكنولوجيا، الرياضة، وأسلوب الحياة في جورنا نيوز. تغطية شاملة ومحدثة للأحداث العالمية والمحلية.",
+      "url": "/",
+      "icon": "Rss",
+      "children": []
+    },
+    "world": {
+      "title": "العالم",
+      "description": "تابع الأخبار الدولية والتطورات العالمية في السياسة، الاقتصاد، والمجتمع في جورنا نيوز. تغطية شاملة للأحداث من الشرق الأوسط إلى الأمريكتين.",
+      "url": "/world",
+      "icon": "Globe",
+      "children": [
+        { "title": "أخبار العالم", "url": "world", "description": "اقرأ آخر الأخبار العالمية في السياسة، الاقتصاد، والمجتمع في جورنا نيوز." },
+        { "title": "إفريقيا", "url": "world/africa", "description": "تابع أخبار القارة الإفريقية بما في ذلك السياسة، الاقتصاد، والثقافة في جورنا نيوز." },
+        { "title": "الأمريكتين", "url": "world/americas", "description": "اقرأ أخبار الأمريكتين من الشمال إلى الجنوب في جورنا نيوز." },
+        { "title": "آسيا والمحيط الهادئ", "url": "world/asia-pacific", "description": "تابع الأحداث والأخبار من منطقة آسيا والمحيط الهادئ في جورنا نيوز." },
+        { "title": "الصين", "url": "world/china", "description": "اقرأ الأخبار السياسية، الاقتصادية، والثقافية من الصين في جورنا نيوز." },
+        { "title": "أوروبا", "url": "world/europe", "description": "تابع أخبار أوروبا في مجالات مختلفة في جورنا نيوز." },
+        { "title": "اليابان", "url": "world/japan", "description": "اقرأ أخبار التكنولوجيا، الثقافة، والسياسة من اليابان في جورنا نيوز." },
+        { "title": "الشرق الأوسط", "url": "world/middle-east", "description": "تابع أخبار الشرق الأوسط مع التركيز على التطورات الإقليمية في جورنا نيوز." },
+        { "title": "حرب أوكرانيا وروسيا", "url": "world/ukraine-russia", "description": "اقرأ تحديثات حرب أوكرانيا وروسيا في جورنا نيوز." },
+        { "title": "المملكة المتحدة", "url": "world/uk", "description": "تابع أخبار المملكة المتحدة في السياسة والمجتمع في جورنا نيوز." },
+        { "title": "الولايات المتحدة", "url": "world/us", "description": "اقرأ آخر أخبار الولايات المتحدة في جورنا نيوز." }
+      ]
+    },
+    "business": {
+      "title": "الأعمال",
+      "description": "اقرأ أخبار الأعمال، التحليلات المالية، والابتكارات في جورنا نيوز. تغطية شاملة للأسواق العالمية والشركات الناشئة.",
+      "url": "/business",
+      "icon": "Briefcase",
+      "children": [
+        { "title": "أخبار الأعمال", "url": "business", "description": "اقرأ آخر أخبار وتحليلات الأعمال في جورنا نيوز." },
+        { "title": "الفضاء والدفاع", "url": "business/aerospace-defense", "description": "تابع أخبار صناعة الفضاء والدفاع في جورنا نيوز." },
+        { "title": "السيارات والنقل", "url": "business/autos-transportation", "description": "اقرأ أخبار صناعة السيارات والنقل في جورنا نيوز." },
+        { "title": "دافوس", "url": "business/davos", "description": "تابع أخبار وتحليلات قمة دافوس في جورنا نيوز." },
+        { "title": "الطاقة", "url": "business/energy", "description": "اقرأ أخبار صناعة الطاقة والموارد المتجددة في جورنا نيوز." },
+        { "title": "البيئة", "url": "business/environment", "description": "تابع التطورات البيئية في الأعمال في جورنا نيوز." },
+        { "title": "المالية", "url": "business/finance", "description": "اقرأ أخبار وتحليلات الأسواق المالية في جورنا نيوز." },
+        { "title": "الرعاية الصحية والصيدلة", "url": "business/healthcare-pharmaceuticals", "description": "تابع أخبار صناعة الرعاية الصحية والصيدلة في جورنا نيوز." },
+        { "title": "الإعلام والاتصالات", "url": "business/media-telecom", "description": "اقرأ أخبار صناعة الإعلام والاتصالات في جورنا نيوز." },
+        { "title": "التجزئة والمستهلك", "url": "business/retail-consumer", "description": "تابع أخبار التجزئة وسلوك المستهلك في جورنا نيوز." },
+        { "title": "مستقبل الصحة", "url": "business/future-of-health", "description": "اقرأ الابتكارات في صناعة الصحة في جورنا نيوز." },
+        { "title": "مستقبل المال", "url": "business/future-of-money", "description": "تابع اتجاهات التكنولوجيا المالية والعملات الرقمية في جورنا نيوز." },
+        { "title": "الخيارات الخمسة", "url": "business/take-five", "description": "اقرأ تحليلات رئيسية في عالم الأعمال في جورنا نيوز." },
+        { "title": "العالم في العمل", "url": "business/world-at-work", "description": "تابع اتجاهات مكان العمل العالمية في جورنا نيوز." }
+      ]
+    },
+    "economy": {
+      "title": "الاقتصاد",
+      "description": "اقرأ أخبار الاقتصاد العالمي، السياسات النقدية، وتحليلات الأسواق المالية في جورنا نيوز. تغطية شاملة للاتجاهات الاقتصادية.",
+      "url": "/economy",
+      "icon": "DollarSign",
+      "children": [
+        { "title": "أخبار الاقتصاد", "url": "economy", "description": "اقرأ آخر أخبار الاقتصاد العالمي في جورنا نيوز." },
+        { "title": "البنوك المركزية", "url": "economy/central-banking", "description": "تابع تطورات البنوك المركزية والسياسات النقدية في جورنا نيوز." },
+        { "title": "المستهلكون", "url": "economy/consumers", "description": "اقرأ اتجاهات سلوك المستهلكين في جورنا نيوز." },
+        { "title": "الإسكان", "url": "economy/housing", "description": "تابع أخبار سوق الإسكان والعقارات في جورنا نيوز." },
+        { "title": "الوظائف", "url": "economy/jobs", "description": "اقرأ أخبار سوق العمل والتوظيف في جورنا نيوز." },
+        { "title": "التجارة", "url": "economy/trade", "description": "تابع أخبار التجارة الدولية في جورنا نيوز." },
+        { "title": "عالمي", "url": "economy/global", "description": "اقرأ تحليلات الاقتصاد العالمي في جورنا نيوز." }
+      ]
+    },
+    "tech": {
+      "title": "التكنولوجيا",
+      "description": "اقرأ أخبار التكنولوجيا، الذكاء الاصطناعي، الأمن السيبراني، والابتكارات الرقمية في جورنا نيوز. ابقَ محدثًا مع أحدث اتجاهات التكنولوجيا.",
+      "url": "/tech",
+      "icon": "CircuitBoard",
+      "children": [
+        { "title": "أخبار التكنولوجيا", "url": "tech", "description": "اقرأ آخر أخبار التكنولوجيا والابتكار في جورنا نيوز." },
+        { "title": "الذكاء الاصطناعي", "url": "tech/ai", "description": "تابع تطورات الذكاء الاصطناعي في جورنا نيوز." },
+        { "title": "التكنولوجيا الحيوية", "url": "tech/biotech", "description": "اقرأ أخبار التكنولوجيا الحيوية في جورنا نيوز." },
+        { "title": "الأمن السيبراني", "url": "tech/cybersecurity", "description": "تابع أحداث الأمن السيبراني في جورنا نيوز." },
+        { "title": "التكنولوجيا الشخصية", "url": "tech/personal-technology", "description": "اقرأ أخبار التكنولوجيا الشخصية والأجهزة في جورنا نيوز." },
+        { "title": "وسائل التواصل الاجتماعي", "url": "tech/social-media", "description": "تابع اتجاهات وسائل التواصل الاجتماعي في جورنا نيوز." }
+      ]
+    },
+    "science": {
+      "title": "العلوم",
+      "description": "اقرأ أخبار العلوم، استكشاف الفضاء، التقدم الطبي، وأبحاث البيئة في جورنا نيوز. تغطية شاملة للتقدم العلمي العالمي.",
+      "url": "/science",
+      "icon": "Microscope",
+      "children": [
+        { "title": "أخبار العلوم", "url": "science", "description": "اقرأ آخر الاكتشافات العلمية في جورنا نيوز." },
+        { "title": "الفضاء", "url": "science/space", "description": "تابع أخبار استكشاف الفضاء في جورنا نيوز." },
+        { "title": "الحيوانات", "url": "science/animals", "description": "اقرأ الأبحاث العلمية عن الحيوانات في جورنا نيوز." },
+        { "title": "العالم القديم", "url": "science/ancient-world", "description": "تابع الاكتشافات الأثرية في جورنا نيوز." },
+        { "title": "المناخ", "url": "science/climate", "description": "اقرأ أخبار المناخ والبيئة في جورنا نيوز." },
+        { "title": "الطب", "url": "science/medicine", "description": "تابع التقدم في العلوم الطبية في جورنا نيوز." }
+      ]
+    },
+    "personal-finance": {
+      "title": "المالية الشخصية",
+      "description": "اقرأ نصائح إدارة المالية الشخصية، الادخار، التخطيط للتقاعد، والضرائب في جورنا نيوز. دليل شامل لإدارة مالية أفضل.",
+      "url": "/personal-finance",
+      "icon": "Wallet",
+      "children": [
+        { "title": "أخبار المالية الشخصية", "url": "personal-finance", "description": "اقرأ آخر أخبار إدارة المالية الشخصية في جورنا نيوز." },
+        { "title": "التقاعد", "url": "personal-finance/retirement", "description": "تابع نصائح التخطيط للتقاعد في جورنا نيوز." },
+        { "title": "الادخار", "url": "personal-finance/savings", "description": "اقرأ استراتيجيات الادخار المالي في جورنا نيوز." },
+        { "title": "الائتمان", "url": "personal-finance/credit", "description": "تابع نصائح إدارة الائتمان والقروض في جورنا نيوز." },
+        { "title": "الضرائب", "url": "personal-finance/taxes", "description": "اقرأ أخبار ونصائح الضرائب في جورنا نيوز." },
+        { "title": "الرهونات", "url": "personal-finance/mortgages", "description": "تابع اتجاهات الرهن العقاري وقروض الإسكان في جورنا نيوز." }
+      ]
+    },
+    "companies": {
+      "title": "الشركات",
+      "description": "اقرأ أخبار وتحليلات الشركات الكبرى في التكنولوجيا، المالية، والصناعة في جورنا نيوز. تغطية شاملة لأداء الشركات العالمية.",
+      "url": "/companies",
+      "icon": "Building",
+      "children": [
+        { "title": "أخبار الشركات", "url": "companies", "description": "اقرأ آخر أخبار الشركات العالمية في جورنا نيوز." },
+        { "title": "المالية", "url": "companies/financials", "description": "تابع أخبار الشركات المالية في جورنا نيوز." },
+        { "title": "الصناعات", "url": "companies/industrials", "description": "اقرأ أخبار الشركات الصناعية في جورنا نيوز." },
+        { "title": "الإعلام", "url": "companies/media", "description": "تابع أخبار الشركات الإعلامية في جورنا نيوز." },
+        { "title": "الخدمات المهنية", "url": "companies/professional-services", "description": "اقرأ أخبار الخدمات المهنية في جورنا نيوز." },
+        { "title": "قطاع التكنولوجيا", "url": "companies/tech-sector", "description": "تابع أخبار الشركات التكنولوجية في جورنا نيوز." },
+        { "title": "الاتصالات", "url": "companies/telecoms", "description": "اقرأ أخبار الشركات الاتصالات في جورنا نيوز." },
+        { "title": "النقل", "url": "companies/transport", "description": "تابع أخبار شركات النقل في جورنا نيوز." }
+      ]
+    },
+    "work-careers": {
+      "title": "العمل والوظائف",
+      "description": "اقرأ أخبار ونصائح العمل، التوظيف، وتعليم الأعمال في جورنا نيوز. دليل شامل للنجاح المهني.",
+      "url": "/work-careers",
+      "icon": "Briefcase",
+      "children": [
+        { "title": "أخبار العمل والوظائف", "url": "work-careers", "description": "اقرأ آخر أخبار العمل والوظائف في جورنا نيوز." },
+        { "title": "تصنيفات مدارس الأعمال", "url": "work-careers/business-school-rankings", "description": "تابع تصنيفات أفضل مدارس الأعمال في جورنا نيوز." },
+        { "title": "تعليم الأعمال", "url": "work-careers/business-education", "description": "اقرأ أخبار تعليم الأعمال في جورنا نيوز." },
+        { "title": "مراكز الشركات الناشئة الأوروبية", "url": "work-careers/europe-startup-hubs", "description": "تابع تطورات الشركات الناشئة الأوروبية في جورنا نيوز." },
+        { "title": "ريادة الأعمال", "url": "work-careers/entrepreneurship", "description": "اقرأ أخبار ونصائح ريادة الأعمال في جورنا نيوز." },
+        { "title": "التوظيف", "url": "work-careers/recruitment", "description": "تابع اتجاهات التوظيف وسوق العمل في جورنا نيوز." },
+        { "title": "كتب الأعمال", "url": "work-careers/business-books", "description": "اقرأ مراجعات كتب الأعمال في جورنا نيوز." },
+        { "title": "السفر للعمل", "url": "work-careers/business-travel", "description": "تابع أخبار ونصائح السفر للعمل في جورنا نيوز." },
+        { "title": "العمل الحديث", "url": "work-careers/working-it", "description": "تابع تطورات بيئة العمل الحديثة في جورنا نيوز." }
+      ]
+    },
+    "real-estate": {
+      "title": "العقارات",
+      "description": "اقرأ أخبار سوق العقارات، المنازل الفاخرة، والعقارات التجارية في جورنا نيوز. تغطية شاملة لاتجاهات سوق الإسكان.",
+      "url": "/real-estate",
+      "icon": "MapPinHouse",
+      "children": [
+        { "title": "أخبار العقارات", "url": "real-estate", "description": "اقرأ آخر أخبار سوق العقارات في جورنا نيوز." },
+        { "title": "العقارات التجارية", "url": "real-estate/commercial", "description": "تابع تطورات العقارات التجارية في جورنا نيوز." },
+        { "title": "المنازل الفاخرة", "url": "real-estate/luxury-homes", "description": "اقرأ أخبار المنازل الفاخرة والعقارات الراقية في جورنا نيوز." }
+      ]
+    },
+    "lifestyle": {
+      "title": "أسلوب الحياة",
+      "description": "اقرأ أخبار أسلوب الحياة، اللياقة البدنية، السفر، وديكور المنزل في جورنا نيوز. دليل شامل للحياة العصرية والصحية.",
+      "url": "/lifestyle",
+      "icon": "Heart",
+      "children": [
+        { "title": "أخبار أسلوب الحياة", "url": "lifestyle", "description": "اقرأ آخر أخبار أسلوب الحياة في جورنا نيوز." },
+        { "title": "الوظائف", "url": "lifestyle/careers", "description": "تابع نصائح الوظائف لتحسين الحياة في جورنا نيوز." },
+        { "title": "السيارات", "url": "lifestyle/cars", "description": "اقرأ أخبار ومراجعات السيارات في جورنا نيوز." },
+        { "title": "اللياقة البدنية", "url": "lifestyle/fitness", "description": "تابع نصائح اللياقة البدنية والصحة في جورنا نيوز." },
+        { "title": "الطعام والطبخ", "url": "lifestyle/food-cooking", "description": "اقرأ أخبار ووصفات الطعام في جورنا نيوز." },
+        { "title": "العلاقات", "url": "lifestyle/relationships", "description": "تابع نصائح العلاقات والحياة الأسرية في جورنا نيوز." },
+        { "title": "السفر", "url": "lifestyle/travel", "description": "اقرأ أخبار ونصائح السفر في جورنا نيوز." },
+        { "title": "مكان العمل", "url": "lifestyle/workplace", "description": "تابع تطورات مكان العمل وأسلوب الحياة في جورنا نيوز." },
+        { "title": "الطعام والشراب", "url": "lifestyle/food-drink", "description": "اقرأ أخبار الطعام والشراب في جورنا نيوز." },
+        { "title": "المنزل", "url": "lifestyle/house", "description": "تابع نصائح ديكور المنزل والحياة المنزلية في جورنا نيوز." },
+        { "title": "أسلوب المنزل", "url": "lifestyle/home-style", "description": "اقرأ أفكار أسلوب المنزل والديكور في جورنا نيوز." },
+        { "title": "الألغاز", "url": "lifestyle/puzzles", "description": "تابع الألغاز والتسلية المتعلقة بأسلوب الحياة في جورنا نيوز." }
+      ]
+    },
+    "arts": {
+      "title": "الفنون",
+      "description": "اقرأ أخبار الفنون، الأفلام، الموسيقى، والمسرح في جورنا نيوز. تغطية شاملة للأحداث الثقافية والفنية العالمية.",
+      "url": "/arts",
+      "icon": "Paintbrush",
+      "children": [
+        { "title": "أخبار الفنون", "url": "arts", "description": "اقرأ آخر أخبار الفنون في جورنا نيوز." },
+        { "title": "الكتب", "url": "arts/books", "description": "تابع أخبار ومراجعات الكتب في جورنا نيوز." },
+        { "title": "الأفلام", "url": "arts/film", "description": "اقرأ أخبار ومراجعات الأفلام السينمائية في جورنا نيوز." },
+        { "title": "الفنون الجميلة", "url": "arts/fine-art", "description": "تابع أحداث الفنون الجميلة في جورنا نيوز." },
+        { "title": "التاريخ", "url": "arts/history", "description": "اقرأ أخبار التاريخ والفنون في جورنا نيوز." },
+        { "title": "الموسيقى", "url": "arts/music", "description": "تابع أخبار وأحداث الموسيقى في جورنا نيوز." },
+        { "title": "التلفزيون", "url": "arts/television", "description": "اقرأ أخبار البرامج التلفزيونية في جورنا نيوز." },
+        { "title": "المسرح", "url": "arts/theater", "description": "تابع أحداث المسرح والعروض في جورنا نيوز." }
+      ]
+    },
+    "health": {
+      "title": "الصحة",
+      "description": "اقرأ أخبار الصحة، الرعاية الصحية، ونصائح العافية في جورنا نيوز. دليل شامل للحياة الصحية والتقدم الطبي.",
+      "url": "/health",
+      "icon": "HeartPulse",
+      "children": [
+        { "title": "أخبار الصحة", "url": "health", "description": "اقرأ آخر أخبار الصحة في جورنا نيوز." },
+        { "title": "الرعاية الصحية", "url": "health/healthcare", "description": "تابع تطورات الرعاية الصحية في جورنا نيوز." },
+        { "title": "الصيدلة", "url": "health/pharma", "description": "اقرأ أخبار صناعة الصيدلة في جورنا نيوز." },
+        { "title": "العافية", "url": "health/wellness", "description": "تابع نصائح العافية والحياة الصحية في جورنا نيوز." }
+      ]
+    },
+    "sports": {
+      "title": "الرياضة",
+      "description": "اقرأ أخبار الرياضة، من كرة القدم إلى الفورمولا 1 والتنس، في جورنا نيوز. تغطية شاملة للأحداث الرياضية العالمية والمحلية.",
+      "url": "/sports",
+      "icon": "Trophy",
+      "children": [
+        { "title": "أخبار الرياضة", "url": "sports", "description": "اقرأ آخر أخبار الرياضة في جورنا نيوز." },
+        { "title": "كرة القدم", "url": "sports/football", "description": "تابع أخبار وأحداث كرة القدم في جورنا نيوز." },
+        { "title": "الكريكيت", "url": "sports/cricket", "description": "اقرأ أخبار الرياضة الكريكيت في جورنا نيوز." },
+        { "title": "اتحاد الرجبي", "url": "sports/rugby-union", "description": "تابع أخبار اتحاد الرجبي في جورنا نيوز." },
+        { "title": "التنس", "url": "sports/tennis", "description": "اقرأ أخبار رياضة التنس في جورنا نيوز." },
+        { "title": "ركوب الدراجات", "url": "sports/cycling", "description": "تابع أخبار ركوب الدراجات في جورنا نيوز." },
+        { "title": "الفورمولا 1", "url": "sports/f1", "description": "اقرأ أخبار سباقات الفورمولا 1 في جورنا نيوز." },
+        { "title": "الجولف", "url": "sports/golf", "description": "اقرأ أخبار رياضة الجولف في جورنا نيوز." },
+        { "title": "الرياضات الأمريكية", "url": "sports/us-sports", "description": "تابع أخبار الرياضات الأمريكية في جورنا نيوز." }
+      ]
+    },
+    "opinion": {
+      "title": "الآراء",
+      "description": "اقرأ تحليلات وآراء الخبراء في السياسة، الاقتصاد، والمجتمع في جورنا نيوز. رؤى متخصصة ومحدثة.",
+      "url": "/opinion",
+      "icon": "Lightbulb",
+      "children": []
+    }
+  },
+  "notFound": "الصفحة غير موجودة",
+  "missingCategory": "الفئة أو الفئة الفرعية غير موجودة",
+  "metadata": {
+    "title": "جورنا نيوز - وسيلة إعلامية",
+    "description": "آخر أخبار العالم في جورنا نيوز، من السياسة والاقتصاد إلى التكنولوجيا وأسلوب الحياة."
+  }
+}
