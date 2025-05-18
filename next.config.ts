@@ -10,13 +10,13 @@ const nextConfig: NextConfig = {
     remotePatterns: [
       {
         protocol: 'https',
-        hostname: 'core.journa.ir',
+        hostname: 'journa.ir',
         port: '',
         pathname: '/storage/**',
       },
       {
         protocol: 'https',
-        hostname: 'core.journa.ir',
+        hostname: 'journa.ir',
         port: '',
         pathname: '/storage/covers/Associated_Press/**',
       },
@@ -32,7 +32,7 @@ const nextConfig: NextConfig = {
   eslint: {
     ignoreDuringBuilds: false,
   },
-  output: 'standalone',
+  // output: 'standalone',
   poweredByHeader: false,
   // اضافه کردن هدرهای عمومی برای API
   async headers() {

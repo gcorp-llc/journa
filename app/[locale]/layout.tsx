@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { Analytics } from "@vercel/analytics/next"
 import localFont from "next/font/local";
 import "../globals.css";
 import { GoogleTagManager } from "@next/third-parties/google";
@@ -89,7 +90,9 @@ export default async function RootLayout({
             <div className="container mx-auto px-4 py-8">
               <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
                 <div className="md:col-span-3">
-                  <div className="flex-1">{children}</div>
+                  <div className="flex-1">{children}
+                      <Analytics />
+                  </div>
                 </div>
                 {/* تبلیغات در دسکتاپ در ستون کناری */}
                 <div className="hidden md:block md:col-span-1">
