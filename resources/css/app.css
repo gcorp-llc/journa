@@ -1,0 +1,87 @@
+@import 'tailwindcss';
+
+@source '../../vendor/laravel/framework/src/Illuminate/Pagination/resources/views/*.blade.php';
+@source '../../storage/framework/views/*.php';
+@source '../**/*.blade.php';
+@source '../**/*.js';
+
+
+@plugin "daisyui" {
+    themes: nord --default;
+}
+
+    @font-face {
+        font-family: 'Vazir';
+        src: url('../fonts/Vazirmatn-Regular.woff2') format('woff2');
+        font-weight: 400;
+        font-style: normal;
+    }
+   @font-face {
+        font-family: 'Shabnam';
+        src: url('../fonts/Shabnam-Bold.woff2') format('woff2');
+        font-weight: 400;
+        font-style: normal;
+    }
+
+
+
+:root {
+  --primary: #f59e0b;
+  scroll-behavior: smooth;
+}
+
+@layer base {
+  body {
+    @apply bg-base-100 text-base-content min-h-screen;
+    font-feature-settings: "ss01", "ss03";
+  }
+
+  /* RTL Support */
+  [dir="rtl"] {
+    text-align: right;
+  }
+
+  [dir="ltr"] {
+    text-align: left;
+  }
+
+  /* Font Configuration */
+  * {
+    font-family: "Vazir", system-ui, sans-serif !important;
+  }
+
+  h1,
+  h2,
+  h3,
+  h4,
+  h5,
+  h6 {
+    font-family: "Shabnam", "Vazir", system-ui, sans-serif !important;
+    @apply font-bold leading-tight;
+  }
+}
+
+@layer components {
+  .container {
+    @apply px-4 mx-auto max-w-7xl;
+  }
+}
+
+/* Custom Scrollbar */
+::-webkit-scrollbar {
+  width: 8px;
+}
+
+::-webkit-scrollbar-track {
+  @apply bg-base-200;
+}
+
+::-webkit-scrollbar-thumb {
+  @apply bg-amber-500 rounded-full;
+}
+
+/* Loading States */
+.loading {
+  @apply animate-pulse;
+}
+

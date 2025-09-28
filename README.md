@@ -1,148 +1,61 @@
-# Journa - Multilingual News Platform
+<p align="center"><a href="https://laravel.com" target="_blank"><img src="https://raw.githubusercontent.com/laravel/art/master/logo-lockup/5%20SVG/2%20CMYK/1%20Full%20Color/laravel-logolockup-cmyk-red.svg" width="400" alt="Laravel Logo"></a></p>
 
-Journa is a modern, multilingual news platform built with Next.js and TypeScript, designed to deliver news content in multiple languages (Persian, English, and Arabic). It leverages server-side rendering (SSR) and static site generation (SSG) for optimal performance and SEO. The platform features dynamic news fetching, a robust state management system using Zustand, and advanced SEO capabilities with a dynamically generated sitemap and robots.txt.
-Features
+<p align="center">
+<a href="https://github.com/laravel/framework/actions"><img src="https://github.com/laravel/framework/workflows/tests/badge.svg" alt="Build Status"></a>
+<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/dt/laravel/framework" alt="Total Downloads"></a>
+<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/v/laravel/framework" alt="Latest Stable Version"></a>
+<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/l/laravel/framework" alt="License"></a>
+</p>
 
-Multilingual Support: Supports Persian (fa), English (en), and Arabic (ar) with next-intl for seamless localization.
-Dynamic News Content: Fetches news from a backend API with fields like title, content, slug, views, and source URL.
-State Management: Uses Zustand for efficient client-side state management of news and ads.
-SEO Optimization: Includes a dynamic sitemap (/sitemap.xml) and robots.txt for better search engine indexing.
-Responsive Design: Optimized for all devices with a clean and modern UI.
-Views Tracking: Tracks and displays the number of views for each news article.
-Type-Safe Development: Built with TypeScript for robust type checking and maintainability.
+## About Laravel
 
-## Tech Stack
+Laravel is a web application framework with expressive, elegant syntax. We believe development must be an enjoyable and creative experience to be truly fulfilling. Laravel takes the pain out of development by easing common tasks used in many web projects, such as:
 
-Frontend: Next.js 13/14, TypeScript, React
-State Management: Zustand
-Localization: next-intl
-Styling: Tailwind CSS (optional, based on project setup)
-API: RESTful API (backend at https://core.journa.ir)
-Linting: ESLint with TypeScript plugin
-Build Tool: Yarn
+- [Simple, fast routing engine](https://laravel.com/docs/routing).
+- [Powerful dependency injection container](https://laravel.com/docs/container).
+- Multiple back-ends for [session](https://laravel.com/docs/session) and [cache](https://laravel.com/docs/cache) storage.
+- Expressive, intuitive [database ORM](https://laravel.com/docs/eloquent).
+- Database agnostic [schema migrations](https://laravel.com/docs/migrations).
+- [Robust background job processing](https://laravel.com/docs/queues).
+- [Real-time event broadcasting](https://laravel.com/docs/broadcasting).
 
-### Prerequisites
-Before you begin, ensure you have the following installed:
+Laravel is accessible, powerful, and provides tools required for large, robust applications.
 
-Node.js: Version 18 or higher
-Yarn: Version 1.x or higher
-Git: For cloning the repository
+## Learning Laravel
 
-### Installation
+Laravel has the most extensive and thorough [documentation](https://laravel.com/docs) and video tutorial library of all modern web application frameworks, making it a breeze to get started with the framework.
 
-Clone the Repository:
-```
-git clone https://github.com/gcorp-llc/journa.git
-cd journa
-```
+You may also try the [Laravel Bootcamp](https://bootcamp.laravel.com), where you will be guided through building a modern Laravel application from scratch.
 
+If you don't feel like reading, [Laracasts](https://laracasts.com) can help. Laracasts contains thousands of video tutorials on a range of topics including Laravel, modern PHP, unit testing, and JavaScript. Boost your skills by digging into our comprehensive video library.
 
-Install Dependencies:
-```
-yarn install
-```
+## Laravel Sponsors
 
+We would like to extend our thanks to the following sponsors for funding Laravel development. If you are interested in becoming a sponsor, please visit the [Laravel Partners program](https://partners.laravel.com).
 
-Set Up Environment Variables:Create a .env.local file in the root directory and add the following:
-```
-NEXT_PUBLIC_BASE_URL=https://journa.ir
-BASE_URL=https://core.journa.ir
+### Premium Partners
 
+- **[Vehikl](https://vehikl.com/)**
+- **[Tighten Co.](https://tighten.co)**
+- **[Kirschbaum Development Group](https://kirschbaumdevelopment.com)**
+- **[64 Robots](https://64robots.com)**
+- **[Curotec](https://www.curotec.com/services/technologies/laravel/)**
+- **[DevSquad](https://devsquad.com/hire-laravel-developers)**
+- **[Redberry](https://redberry.international/laravel-development/)**
+- **[Active Logic](https://activelogic.com)**
 
-NEXT_PUBLIC_BASE_URL: The public URL of the frontend.
-BASE_URL: The backend API URL.
-```
+## Contributing
 
-Run the Development Server:
-```
-yarn dev
-```
+Thank you for considering contributing to the Laravel framework! The contribution guide can be found in the [Laravel documentation](https://laravel.com/docs/contributions).
 
-Open http://localhost:3000 in your browser to see the application.
+## Code of Conduct
 
+In order to ensure that the Laravel community is welcoming to all, please review and abide by the [Code of Conduct](https://laravel.com/docs/contributions#code-of-conduct).
 
-Building for Production
-To create an optimized production build:
-yarn build
+## Security Vulnerabilities
 
-To start the production server:
-yarn start
+If you discover a security vulnerability within Laravel, please send an e-mail to Taylor Otwell via [taylor@laravel.com](mailto:taylor@laravel.com). All security vulnerabilities will be promptly addressed.
 
-### Note: If you encounter memory issues during the build, increase Node.js memory allocation:
+## License
 
-```
-NODE_OPTIONS=--max_old_space_size=8192 yarn build
-```
-
-
-
-## API Integration
-The frontend communicates with a backend API at https://core.journa.ir. Key endpoints include:
-
-GET /news: Fetches news articles with fields like id, slug, title, content, published_at, views, and source_url.
-GET /search: Searches news articles based on query, locale, and pagination.
-POST /news/[slug]/increment-views: Increments the view count for a specific news article.
-
-Ensure the backend API is running and accessible.
-
-## SEO and Metadata
-
-Sitemap: Generated dynamically at /sitemap.xml, including homepages (/[locale]) and news pages (/[locale]/news/[slug]) for each locale.
-Robots.txt: Configured at /robots.txt to allow indexing of public pages and disallow private routes (e.g., /api/, /admin/).
-Structured Data: News articles include JSON-LD structured data for improved SEO.
-
-## Development Guidelines
-
-TypeScript: Always define types for props, state, and API responses in the types/ directory.
-Linting: Run yarn lint to check code quality:yarn lint
-
-
-Formatting: Use Prettier for consistent code formatting:yarn format
-
-
-Commits: Follow conventional commit messages (e.g., feat: add sitemap generation, fix: resolve memory issue).
-
-## Troubleshooting
-
-Out of Memory Error:
-
-Increase Node.js memory allocation:NODE_OPTIONS=--max_old_space_size=8192 yarn build
-
-
-Clear the Next.js cache:rm -rf .next
-
-
-Check LVE limits on CloudLinux servers (if applicable). See CloudLinux Documentation.
-
-
-TypeScript Errors:
-
-Ensure tsconfig.json and .eslintrc.json are correctly configured.
-Run yarn tsc --noEmit to check types.
-
-
-API Issues:
-
-Verify that the backend API (BASE_URL) is accessible and returns the expected data structure.
-Check network logs in the browser or server logs for errors.
-
-
-
-Contributing
-
-Fork the repository: https://github.com/gcorp-llc/journa.git.
-Create a feature branch (git checkout -b feature/your-feature).
-Commit your changes (git commit -m 'feat: your feature description').
-Push to the branch (git push origin feature/your-feature).
-Open a Pull Request on GitHub.
-
-License
-This project is licensed under the MIT License. See the LICENSE file for details.
-Contact
-For questions or support, contact the project maintainers at:
-
-Email: support@journa.ir
-GitHub Issues: gcorp-llc/journa/issues
-
-
-Built with ❤️ by the Dr Manhattan
+The Laravel framework is open-sourced software licensed under the [MIT license](https://opensource.org/licenses/MIT).
