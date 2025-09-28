@@ -176,7 +176,7 @@ class CrawlNewsCategoriesJob implements ShouldQueue
                     $this->categoryId,
                     $item['link'],
                     $this->config['news_selectors'] ?? []
-                )->delay(now()->addSeconds($delaySeconds));
+                );
             }
         }
     }

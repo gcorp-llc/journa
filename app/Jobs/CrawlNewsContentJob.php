@@ -15,9 +15,9 @@ class CrawlNewsContentJob implements ShouldQueue
 {
     use Queueable;
 
-    private const HTTP_TIMEOUT = 15; // افزایش timeout
+    private const HTTP_TIMEOUT = 15;
     private const RETRY_DELAY = 60;
-    private const MIN_PARAGRAPH_LENGTH = 50;
+    private const MIN_PARAGRAPH_LENGTH = 30;
     private const MAX_RETRIES = 3;
 
     private string $siteName;
@@ -30,9 +30,6 @@ class CrawlNewsContentJob implements ShouldQueue
 
     public $tries = self::MAX_RETRIES;
 
-    /**
-     * Create a new job instance.
-     */
     public function __construct(string $siteName, int $siteId, int $categoryId, string $url, array $newsSelectors = [])
     {
         $this->siteName = $siteName;
@@ -42,9 +39,6 @@ class CrawlNewsContentJob implements ShouldQueue
         $this->config = ['news_selectors' => $newsSelectors];
     }
 
-    /**
-     * Execute the job.
-     */
     public function handle(TranslationService $translationService)
     {
         try {
@@ -60,21 +54,20 @@ class CrawlNewsContentJob implements ShouldQueue
             $newsId = $this->saveNews($translations);
             $this->saveCategory($newsId);
 
-            Log::info("خبر با موفقیت ذخیره شد. ID: {$newsId}");
+            Log::info("خبر با موفقیت ذخیره شد.", [
+                'news_id' => $newsId,
+                'url' => $this->url,
+                'content_length' => strlen(strip_tags($content)),
+                'paragraph_count' => substr_count($content, '<p>'),
+            ]);
 
-            // ارسال job پردازش تصویر با HTML برای جلوگیری از fetch مجدد
-            ProcessNewsImageJob::dispatch($newsId, $this->siteName, $this->url, $this->config, $this->html)
-
-                ->delay(now()->addSeconds(2)); // تاخیر کوتاه برای اطمینان از commit شدن transaction
+            ProcessNewsImageJob::dispatchSync($newsId, $this->siteName, $this->url, $this->config, $this->html)->delay(now()->addSeconds(3));
 
         } catch (\Exception $e) {
             $this->handleError($e);
         }
     }
 
-    /**
-     * Get configuration for the site.
-     */
     private function getConfig(): array
     {
         $config = config('crawler.sites.' . $this->siteName);
@@ -84,9 +77,6 @@ class CrawlNewsContentJob implements ShouldQueue
         return $config;
     }
 
-    /**
-     * Fetch the page content from the URL.
-     */
     private function fetchPage(): string
     {
         $response = Http::withHeaders([
@@ -96,6 +86,11 @@ class CrawlNewsContentJob implements ShouldQueue
             'Accept-Encoding' => 'gzip, deflate',
             'Connection' => 'keep-alive',
         ])->timeout(self::HTTP_TIMEOUT)->get($this->url);
+
+        if ($response->status() == 403) {
+            Log::warning("دسترسی به URL ممنوع است: {$this->url}, وضعیت: 403");
+            $this->release(self::RETRY_DELAY);
+        }
 
         if (!$response->ok()) {
             throw new \Exception("خطا در دریافت URL: {$this->url}, وضعیت: {$response->status()}");
@@ -109,24 +104,47 @@ class CrawlNewsContentJob implements ShouldQueue
         return $html;
     }
 
-    /**
-     * Extract content from HTML using selectors.
-     */
     private function extractContent(string $html, array $selectors): string
     {
         $crawler = new Crawler($html);
 
+        // استخراج عنوان
         if ($crawler->filter($selectors['title'])->count()) {
             $this->title = trim($crawler->filter($selectors['title'])->text());
         }
 
+        // حذف المنت‌های ناخواسته عمومی
         $this->removeUnwantedElements($crawler);
 
-        $contentHtml = $crawler->filter($selectors['content'])->count()
-            ? $crawler->filter($selectors['content'])->html()
-            : '';
+        // حذف المنت‌های تبلیغاتی خاص سایت
+        if (!empty($selectors['unwanted_content_selectors'])) {
+            $unwantedSelectors = implode(', ', array_map('trim', $selectors['unwanted_content_selectors']));
+            $crawler->filter($selectors['content'] . ' ' . $unwantedSelectors)->each(function (Crawler $node) {
+                $domNode = $node->getNode(0);
+                if ($domNode && $domNode->parentNode) {
+                    $domNode->parentNode->removeChild($domNode);
+                }
+            });
+        }
 
-        $cleanedContent = $this->cleanContent($contentHtml);
+        // استخراج تمام پاراگراف‌ها
+        $contentHtml = '';
+        if ($crawler->filter($selectors['content'])->count()) {
+            $crawler->filter($selectors['content'] . ' p')->each(function (Crawler $node) use (&$contentHtml) {
+                $text = trim($node->html());
+                if (strlen(strip_tags($text)) >= self::MIN_PARAGRAPH_LENGTH &&
+                    !preg_match('/(advertisement|sponsor|ads|subscribe|sign up)/i', strip_tags($text))) {
+                    $contentHtml .= "<p>{$text}</p>\n";
+                }
+            });
+        }
+
+        if (empty($contentHtml)) {
+            throw new \Exception("محتوای قابل استخراج برای {$this->url} یافت نشد.");
+        }
+
+        $cleanedContent = $this->sanitizeHtml($contentHtml);
+
         if (strlen(strip_tags($cleanedContent)) < 100) {
             throw new \Exception("محتوای استخراج‌شده بسیار کوتاه است: {$this->url}");
         }
@@ -134,15 +152,16 @@ class CrawlNewsContentJob implements ShouldQueue
         return $cleanedContent;
     }
 
-    /**
-     * Remove unwanted elements from the crawler.
-     */
     private function removeUnwantedElements(Crawler $crawler): void
     {
         $unwantedSelectors = [
-            'script', 'style', 'iframe', '.ad', '.banner',
-            '.advertisement', '[class*="ad-"]', '[id*="ad-"]',
-            '.social-share', '.related-posts', '.comments'
+            'script', 'style', 'iframe', 'nav', 'footer',
+            '.ad', '.banner', '.advertisement',
+            '[class*="ad-"]', '[id*="ad-"]',
+            '.social-share', '.related-posts', '.comments',
+            '.Component-video-0', '.Component-image-0', '.Component-caption-0',
+            '.inline-content', '.promo-content', '.ad-block',
+            'figure[class*="ad"]', 'div[class*="fs-feed-ad"]',
         ];
 
         $crawler->filter(implode(', ', $unwantedSelectors))->each(function (Crawler $node) {
@@ -153,64 +172,38 @@ class CrawlNewsContentJob implements ShouldQueue
         });
     }
 
-    /**
-     * Clean the extracted HTML content.
-     */
-    private function cleanContent(string $html): string
-    {
-        $crawler = new Crawler($html);
-        $blocks = $crawler->filter('p, div, article')->each(function (Crawler $node) {
-            $text = trim($node->html());
-            if (strlen(strip_tags($text)) < self::MIN_PARAGRAPH_LENGTH ||
-                preg_match('/(advertisement|sponsor|ads)/i', $text)) {
-                return '';
-            }
-            return "<p>{$this->formatText($text)}</p>";
-        });
-
-        $content = implode("\n", array_filter($blocks));
-        return $this->sanitizeHtml($content);
-    }
-
-    /**
-     * Format text by adding breaks after periods.
-     */
-    private function formatText(string $text): string
-    {
-        return preg_replace('/(\.\s+)/', '.<br>', $text);
-    }
-
-    /**
-     * Sanitize HTML by removing unwanted tags and scripts.
-     */
     private function sanitizeHtml(string $html): string
     {
         $patterns = [
-            '/<(?!p|br|img\s*\/?)[^>]+>/i' => '',
-            '/<script\b[^>]*>(.*?)<\/script>/is' => '',
+            '/<(?!p|br|strong|em|a\s*\/?)[^>]+>/i' => '', // فقط تگ‌های مجاز
+            '/<script\b[^>]*>.*?<\/script>/is' => '',
             '/freestar\.queue\.push\s*\(.*?\);/is' => '',
             '/document\.querySelectorAll\s*\(.*?\);/is' => '',
             '/window\.fsadcount.*?;/is' => '',
             '/Math\.random\s*\(.*?\)/is' => '',
-            '/<[^>]*class=".*?fs-feed-ad.*?"[^>]*>.*?<\/[^>]+>/is' => '',
+            '/<div[^>]*class="[^"]*fs-feed-ad[^"]*"[^>]*>.*?<\/div>/is' => '', // اصلاح‌شده
+            '/<figure[^>]*class="[^"]*ad[^"]*"[^>]*>.*?<\/figure>/is' => '', // اصلاح‌شده
             '/Advertisements\s*[\r\n]+.*?(?:<br>|\z)/is' => '',
             '/Information about Iranian doctors.*?(?:<br>|\z)/is' => '',
             '/(\s*\n\s*)+/' => "\n",
             '/(<br\s*\/?>)+/' => '<br>',
             '/<picture[^>]*>.*?(?:<\/picture>|\z)/is' => '',
-            '/<figure[^>]*class=".*?ad.*?"[^>]*>.*?<\/figure>/is' => '',
         ];
 
         foreach ($patterns as $pattern => $replacement) {
-            $html = preg_replace($pattern, $replacement, $html);
+            try {
+                $html = preg_replace($pattern, $replacement, $html);
+            } catch (\Exception $e) {
+                Log::error("خطا در preg_replace برای الگو: {$pattern}", [
+                    'error' => $e->getMessage(),
+                    'url' => $this->url
+                ]);
+            }
         }
 
         return trim(html_entity_decode($html, ENT_QUOTES | ENT_HTML5, 'UTF-8'));
     }
 
-    /**
-     * Translate content to Persian and Arabic.
-     */
     private function translateContent(string $content, TranslationService $translationService): array
     {
         $data = [
@@ -221,9 +214,6 @@ class CrawlNewsContentJob implements ShouldQueue
         return $translationService->translateArray($data, ['title', 'content']);
     }
 
-    /**
-     * Save news to the database.
-     */
     private function saveNews(array $translations): int
     {
         return DB::transaction(function () use ($translations) {
@@ -231,7 +221,7 @@ class CrawlNewsContentJob implements ShouldQueue
             $data = [
                 'title' => json_encode($translations['title']),
                 'content' => json_encode($translations['content']),
-                'cover' => null, // Initially null, will be updated by image job
+                'cover' => null,
                 'slug' => Str::slug($titleEn) . '-' . uniqid(),
                 'published_at' => now(),
                 'source_url' => $this->url,
@@ -241,7 +231,6 @@ class CrawlNewsContentJob implements ShouldQueue
                 'updated_at' => now(),
             ];
 
-            // بررسی وجود خبر با URL مشابه
             $existingNews = DB::table('news')
                 ->where('source_url', $this->url)
                 ->first();
@@ -258,9 +247,6 @@ class CrawlNewsContentJob implements ShouldQueue
         });
     }
 
-    /**
-     * Save category association for the news.
-     */
     private function saveCategory(int $newsId): void
     {
         $exists = DB::table('category_news')
@@ -279,9 +265,6 @@ class CrawlNewsContentJob implements ShouldQueue
         }
     }
 
-    /**
-     * Handle errors during job execution.
-     */
     private function handleError(\Exception $e): void
     {
         Log::error("خطا در خزش محتوا {$this->url}: {$e->getMessage()}", [
