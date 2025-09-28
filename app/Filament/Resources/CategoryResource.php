@@ -10,6 +10,8 @@ use Filament\Resources\Concerns\Translatable;
 use Filament\Resources\Resource;
 use Filament\Tables;
 use Filament\Tables\Table;
+use Guava\FilamentIconPicker\Forms\IconPicker;
+use Guava\FilamentIconPicker\Tables\IconColumn;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\SoftDeletingScope;
 use Illuminate\Support\Str;
@@ -30,9 +32,10 @@ class CategoryResource extends Resource
         return $form
             ->schema([
                 Forms\Components\TextInput::make('title')
-                    ->afterStateUpdated(function (Forms\Set $set, $state) {
-                        $set('slug', Str::slug($state));
-                    }),
+//                    ->afterStateUpdated(function (Forms\Set $set, $state) {
+//                        $set('slug', Str::slug($state));
+//                    })
+                ,
                 Forms\Components\TextInput::make('slug'),
                 Forms\Components\Select::make('parent_id')
                     ->label('Parent Category')
@@ -43,12 +46,13 @@ class CategoryResource extends Resource
                     ->label('sort order')
                 ->numeric()
                 ->nullable(),
-                Forms\Components\Textarea::make('icon')
-                    ->label('icon svg')
-                    ->rows(10)
-                    ->cols(20)
-                    ->nullable()
-                    ->columnSpanFull(),
+//                Forms\Components\Textarea::make('icon')
+//                    ->label('icon svg')
+//                    ->rows(10)
+//                    ->cols(20)
+//                    ->nullable()
+//                    ->columnSpanFull(),
+                IconPicker::make('icon'),
                 Forms\Components\Textarea::make('description')
                     ->rows(10)
                     ->cols(20)
@@ -61,8 +65,12 @@ class CategoryResource extends Resource
     {
         return $table
             ->columns([
+                Tables\Columns\TextColumn::make('sort_order'),
+                IconColumn::make('icon'),
                 Tables\Columns\TextColumn::make('title'),
                 Tables\Columns\TextColumn::make('slug'),
+                Tables\Columns\TextColumn::make('parent.title')
+
             ])
             ->filters([
                 //

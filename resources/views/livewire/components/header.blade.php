@@ -26,7 +26,7 @@
             </a>
 
             <!-- Language Switcher -->
-            <livewire:components.language-switcher/>
+            <livewire:components.switch-language/>
 
             <!-- Logo -->
             <a href="/{{ session('locale', app()->getLocale()) }}"
