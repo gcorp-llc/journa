@@ -11,8 +11,6 @@ new class extends Component {
 
     public $category;
     public $childCategory;
-    public $title;
-    public $description;
 
     public function mount($category_slug, $child_slug)
     {
@@ -24,23 +22,19 @@ new class extends Component {
             ->where('parent_id', $this->category->id)
             ->firstOrFail();
 
-        // Title and description using flattened translation keys
-        $this->title = __("menu.{$this->category->slug}.children.{$this->childCategory->slug}.title");
-        $this->description = __("menu.{$this->category->slug}.children.{$this->childCategory->slug}.description");
-
         // SEO metadata
-        SEOMeta::setTitle($this->title);
-        SEOMeta::setDescription($this->description);
+        SEOMeta::setTitle($this->childCategory->title);
+        SEOMeta::setDescription($this->childCategory->description);
         SEOMeta::setCanonical(request()->url());
 
-        OpenGraph::setTitle($this->title);
-        OpenGraph::setDescription($this->description);
+        OpenGraph::setTitle($this->childCategory->title);
+        OpenGraph::setDescription($this->childCategory->description);
         OpenGraph::setUrl(request()->url());
         OpenGraph::addProperty('type', 'webpage');
 
         SEOMeta::addMeta('twitter:card', 'summary_large_image');
-        SEOMeta::addMeta('twitter:title', $this->title);
-        SEOMeta::addMeta('twitter:description', $this->description);
+        SEOMeta::addMeta('twitter:title', $this->childCategory->title);
+        SEOMeta::addMeta('twitter:description', $this->childCategory->description);
     }
 
     public function with()
@@ -57,14 +51,14 @@ new class extends Component {
     <div class="breadcrumbs text-sm">
         <ul>
             <li><a href="/">{{ __('menu.home.title') }}</a></li>
-            <li><a href="{{ '/category/' . $category->slug }}">{{ __('menu.' . $category->slug . '.title') }}</a></li>
-            <li>{{ __('menu.' . $category->slug . '.children.' . $childCategory->slug . '.title') }}</li>
+            <li><a href="{{ '/category/' . $category->slug }}">{{ $category->title}}</a></li>
+            <li>{{ $childCategory->title}}</li>
         </ul>
     </div>
 
     <!-- Page Title and Description -->
-    <h1 class="text-3xl font-bold">{{ __('menu.' . $category->slug . '.children.' . $childCategory->slug . '.title') }}</h1>
-    <p>{{ __('menu.' . $category->slug . '.children.' . $childCategory->slug . '.description') }}</p>
+    <h1 class="text-3xl font-bold">{{$childCategory->title }}</h1>
+    <p>{{$childCategory->description }}</p>
 
     <!-- News Section -->
     <div class="mt-8">

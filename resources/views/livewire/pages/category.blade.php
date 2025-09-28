@@ -11,42 +11,30 @@ new class extends Component {
     use WithPagination;
 
     public $category;
-    public $title;
-    public $description;
 
     public function mount($slug)
     {
         // Find the category
         $this->category = Category::where('slug', $slug)->firstOrFail();
-
-        // Set title and description with fallback for missing translations
-        $this->title = __("menu.{$this->category->slug}.title") ?: $this->category->slug;
-        $this->description = __("menu.{$this->category->slug}.description") ?: 'No description available';
-
-        // Log missing translations
-        if (__("menu.{$this->category->slug}.title") === "menu.{$this->category->slug}.title") {
-            Log::warning("Translation missing for menu.{$this->category->slug}.title in locale " . app()->getLocale());
-        }
-
         // Set SEO metadata
-        SEOMeta::setTitle($this->title);
-        SEOMeta::setDescription($this->description);
+        SEOMeta::setTitle($this->category->title);
+        SEOMeta::setDescription($this->category->description);
         SEOMeta::setCanonical(request()->url());
 
-        OpenGraph::setTitle($this->title);
-        OpenGraph::setDescription($this->description);
+        OpenGraph::setTitle($this->category->title);
+        OpenGraph::setDescription($this->category->description);
         OpenGraph::setUrl(request()->url());
         OpenGraph::addProperty('type', 'webpage');
 
         SEOMeta::addMeta('twitter:card', 'summary_large_image');
-        SEOMeta::addMeta('twitter:title', $this->title);
-        SEOMeta::addMeta('twitter:description', $this->description);
+        SEOMeta::addMeta('twitter:title', $this->category->title);
+        SEOMeta::addMeta('twitter:description', $this->category->description);
     }
 
     public function with()
     {
         return [
-            'news' => $this->category->news()->paginate(66),
+            'news' => $this->category->news()->paginate(77),
         ];
     }
 };
@@ -59,29 +47,23 @@ new class extends Component {
             <li>
                 <a href="/" class="text-blue-600 hover:underline">{{ __('menu.home.title') }}</a>
             </li>
-            <li class="text-gray-400">/</li>
             <li class="text-gray-600 font-medium">
-                {{ __('menu.' . $category->slug . '.title') }}
-                @if (__('menu.' . $category->slug . '.title') === 'menu.' . $category->slug . '.title')
-                    <span class="text-red-500 text-xs">[Translation Missing]</span>
-                @endif
+                {{ $category->title }}
             </li>
         </ul>
     </nav>
 
     <!-- Page Title and Description -->
     <div class="mb-8">
-        <h1 class="text-4xl font-bold text-gray-800 mb-3">
-            {{ __('menu.' . $category->slug . '.title') }}
-            @if (__('menu.' . $category->slug . '.title') === 'menu.' . $category->slug . '.title')
-                <span class="text-red-500 text-sm">[Translation Missing]</span>
+        <h1 class="text-4xl font-bold text-gray-800 mb-3 flex">
+            @if($category->icon)
+                <x-icon :name="$category->icon" class="w-6 h-6 md:w-9 md:h-9 me-2" />
             @endif
+            {{ $category->title }}
+
         </h1>
         <p class="text-lg text-gray-600 leading-relaxed">
-            {{ __('menu.' . $category->slug . '.description') }}
-            @if (__('menu.' . $category->slug . '.description') === 'menu.' . $category->slug . '.description')
-                <span class="text-red-500 text-sm">[Translation Missing]</span>
-            @endif
+           {{$category->description}}
         </p>
     </div>
 

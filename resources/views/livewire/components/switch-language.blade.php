@@ -46,7 +46,7 @@ new class extends Component {
 @endphp
 
 <div class="dropdown dropdown-end hidden lg:block">
-    <div tabindex="0" role="button" class="btn btn-sm btn-info btn-circle">
+    <div tabindex="0" role="button" class="btn btn-sm btn-success btn-circle">
         {{ strtoupper(app()->getLocale()) }}
     </div>
     <ul tabindex="0" class="dropdown-content menu bg-base-200 rounded-box z-[1] w-40 p-2 shadow-lg mt-2">
