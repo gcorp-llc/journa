@@ -52,7 +52,7 @@ return [
             'news_selectors' => [
                 'title' => 'h1.Page-headline',
                 'content' => '.RichTextStoryBody',
-                'cover' => 'img.Image',
+                'cover' => '.CarouselSlide-media picture source[media*="min-width: 1024px"][type="image/webp"], .CarouselSlide-media img.Image',
                 'cover_alt' => 'meta[property="og:image"]',
                 'unwanted_content_selectors' => [
                     '.inline-content',
@@ -66,7 +66,7 @@ return [
                     '.Advertisement'
                 ],
             ],
-            'rate_limit' => 2,
+            'rate_limit' => 5,
         ],
         'Financial Times' => [
             'category_selectors' => [

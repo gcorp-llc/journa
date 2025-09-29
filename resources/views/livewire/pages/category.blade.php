@@ -81,7 +81,7 @@ new class extends Component {
         @else
             <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
                 @foreach ($news as $item)
-                    <div class="bg-white rounded-lg shadow-md hover:shadow-lg transition-shadow duration-300">
+                    <div class="">
                         <livewire:components.news-card :news="$item" />
                     </div>
                 @endforeach

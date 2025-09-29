@@ -61,7 +61,8 @@ class CrawlNewsContentJob implements ShouldQueue
                 'paragraph_count' => substr_count($content, '<p>'),
             ]);
 
-            ProcessNewsImageJob::dispatchSync($newsId, $this->siteName, $this->url, $this->config, $this->html)->delay(now()->addSeconds(3));
+            ProcessNewsImageJob::dispatch($newsId, $this->siteName, $this->url, $this->config, $this->html, $translations['title']['en'] ?? 'news')
+                ->delay(now()->addSeconds(3));
 
         } catch (\Exception $e) {
             $this->handleError($e);
@@ -127,14 +128,15 @@ class CrawlNewsContentJob implements ShouldQueue
             });
         }
 
-        // استخراج تمام پاراگراف‌ها
+        // استخراج تمام پاراگراف‌ها و تگ‌های h
         $contentHtml = '';
         if ($crawler->filter($selectors['content'])->count()) {
-            $crawler->filter($selectors['content'] . ' p')->each(function (Crawler $node) use (&$contentHtml) {
+            $crawler->filter($selectors['content'] . ' p, ' . $selectors['content'] . ' h1, ' . $selectors['content'] . ' h2, ' . $selectors['content'] . ' h3, ' . $selectors['content'] . ' h4, ' . $selectors['content'] . ' h5, ' . $selectors['content'] . ' h6')->each(function (Crawler $node) use (&$contentHtml) {
+                $tag = $node->nodeName();
                 $text = trim($node->html());
                 if (strlen(strip_tags($text)) >= self::MIN_PARAGRAPH_LENGTH &&
                     !preg_match('/(advertisement|sponsor|ads|subscribe|sign up)/i', strip_tags($text))) {
-                    $contentHtml .= "<p>{$text}</p>\n";
+                    $contentHtml .= "<{$tag}>{$text}</{$tag}>\n";
                 }
             });
         }
@@ -174,20 +176,24 @@ class CrawlNewsContentJob implements ShouldQueue
 
     private function sanitizeHtml(string $html): string
     {
+        // پیش‌پردازش برای مدیریت نقل‌قول‌های نامتعادل
+        $html = str_replace(['"', "'"], ['&quot;', '&#39;'], $html);
+
         $patterns = [
-            '/<(?!p|br|strong|em|a\s*\/?)[^>]+>/i' => '', // فقط تگ‌های مجاز
-            '/<script\b[^>]*>.*?<\/script>/is' => '',
-            '/freestar\.queue\.push\s*\(.*?\);/is' => '',
-            '/document\.querySelectorAll\s*\(.*?\);/is' => '',
-            '/window\.fsadcount.*?;/is' => '',
-            '/Math\.random\s*\(.*?\)/is' => '',
-            '/<div[^>]*class="[^"]*fs-feed-ad[^"]*"[^>]*>.*?<\/div>/is' => '', // اصلاح‌شده
-            '/<figure[^>]*class="[^"]*ad[^"]*"[^>]*>.*?<\/figure>/is' => '', // اصلاح‌شده
-            '/Advertisements\s*[\r\n]+.*?(?:<br>|\z)/is' => '',
-            '/Information about Iranian doctors.*?(?:<br>|\z)/is' => '',
-            '/(\s*\n\s*)+/' => "\n",
-            '/(<br\s*\/?>)+/' => '<br>',
-            '/<picture[^>]*>.*?(?:<\/picture>|\z)/is' => '',
+            '#<(?!p|br|strong|em|h[1-6]\s*\/?)[^>]+>#i' => '', // فقط تگ‌های p, br, strong, em, h1-h6 مجازند
+            '#<a[^>]*>(.*?)</a>#is' => '$1', // حذف تگ <a> اما حفظ متن
+            '#<script\b[^>]*>.*?</script>#is' => '',
+            '#freestar\.queue\.push\s*\(.*?\);#is' => '',
+            '#document\.querySelectorAll\s*\(.*?\);#is' => '',
+            '#window\.fsadcount.*?;#is' => '',
+            '#Math\.random\s*\(.*?\)#is' => '',
+            '#<div[^>]*class="[^"]*fs-feed-ad[^"]*"[^>]*>.*?</div>#is' => '',
+            '#<figure[^>]*class="[^"]*ad[^"]*"[^>]*>.*?</figure>#is' => '',
+            '#Advertisements\s*[\r\n]+.*?(?:<br>|\z)#is' => '',
+            '#Information about Iranian doctors.*?(?:<br>|\z)#is' => '',
+            '#(\s*\n\s*)+#' => "\n",
+            '#(<br\s*\/?>)+#' => '<br>',
+            '#<picture[^>]*>.*?(?:</picture>|\z)#is' => '',
         ];
 
         foreach ($patterns as $pattern => $replacement) {
@@ -198,6 +204,8 @@ class CrawlNewsContentJob implements ShouldQueue
                     'error' => $e->getMessage(),
                     'url' => $this->url
                 ]);
+                // ادامه پردازش حتی در صورت خطا
+                continue;
             }
         }
 

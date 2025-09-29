@@ -52,8 +52,7 @@ class News extends Model
      */
     public function categories(): BelongsToMany
     {
-        return $this->belongsTo(Category::class, 'category_news', 'news_id', 'category_id')
-            ->withTimestamps();
+        return $this->belongsToMany(Category::class, 'category_news', 'news_id', 'category_id');
     }
 
     /**

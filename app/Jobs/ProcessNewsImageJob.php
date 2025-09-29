@@ -30,16 +30,6 @@ class ProcessNewsImageJob implements ShouldQueue
     private ?string $html;
     private string $slug;
 
-    /**
-     * Create a new job instance.
-     *
-     * @param int $newsId ID of the news record to update
-     * @param string $siteName Name of the news site
-     * @param string $url URL of the news article (for base URL in normalize)
-     * @param array $config Site configuration
-     * @param string|null $html The raw HTML content of the page
-     * @param string $slug The slug of the news article
-     */
     public function __construct(int $newsId, string $siteName, string $url, array $config, ?string $html = null, string $slug = '')
     {
         $this->newsId = $newsId;
@@ -50,9 +40,6 @@ class ProcessNewsImageJob implements ShouldQueue
         $this->slug = $slug ?: 'default-slug-' . $newsId;
     }
 
-    /**
-     * Execute the job.
-     */
     public function handle()
     {
         try {
@@ -94,9 +81,6 @@ class ProcessNewsImageJob implements ShouldQueue
         }
     }
 
-    /**
-     * Fetch the page content from the URL (if needed).
-     */
     private function fetchPage(): string
     {
         $response = Http::timeout(self::HTTP_TIMEOUT)->get($this->url);
@@ -106,9 +90,6 @@ class ProcessNewsImageJob implements ShouldQueue
         return $response->body();
     }
 
-    /**
-     * Extract image URL from HTML.
-     */
     private function extractImageUrl(Crawler $crawler): ?string
     {
         if (empty($this->config['news_selectors']['cover'])) {
@@ -116,6 +97,7 @@ class ProcessNewsImageJob implements ShouldQueue
             return $this->extractFallbackImageUrl($crawler);
         }
 
+        // تلاش برای یافتن اولین تصویر با رزولوشن بالا
         $coverImage = $crawler->filter($this->config['news_selectors']['cover'])->first();
 
         if ($coverImage->count() === 0) {
@@ -123,60 +105,58 @@ class ProcessNewsImageJob implements ShouldQueue
             return $this->extractFallbackImageUrl($crawler);
         }
 
-        // Find parent <picture> using XPath
-        $picture = $coverImage->filterXPath('ancestor::picture')->first();
         $imageUrl = null;
 
-        if ($picture->count() > 0) {
-            $sources = $picture->filter('source')->each(function (Crawler $source) {
-                $media = $source->attr('media');
-                $srcset = $source->attr('srcset');
-                if ($media && preg_match('/min-width:\s*1024px/i', $media) && $srcset) {
-                    return trim(explode(',', $srcset)[0]);
-                }
-                return null;
-            });
-
-            $imageUrl = array_filter($sources)[0] ?? $coverImage->attr('src');
+        // بررسی اگر سلکتور به <source> اشاره دارد
+        if ($coverImage->nodeName() === 'source') {
+            $srcset = $coverImage->attr('srcset');
+            if ($srcset) {
+                // گرفتن اولین URL از srcset
+                $imageUrl = trim(explode(',', $srcset)[0]);
+            }
         } else {
+            // اگر سلکتور به <img> اشاره دارد
             $imageUrl = $coverImage->attr('src');
         }
 
-        if (empty($imageUrl)) {
-            Log::warning("تصویر کاور بدون src برای URL {$this->url} پیدا شد. تلاش برای استفاده از فال‌بک.");
+        // بررسی اعتبار URL
+        if (empty($imageUrl) || str_starts_with($imageUrl, 'data:image/')) {
+            Log::warning("URL تصویر نامعتبر است یا Data URL است: {$imageUrl}. تلاش برای استفاده از فال‌بک.");
             return $this->extractFallbackImageUrl($crawler);
         }
 
         return $imageUrl;
     }
 
-    /**
-     * Extract fallback image URL from meta tags or first large img.
-     */
     private function extractFallbackImageUrl(Crawler $crawler): ?string
     {
+        // فال‌بک 1: متا تگ og:image
         $metaImage = $crawler->filter('meta[property="og:image"]')->first();
         if ($metaImage->count() > 0) {
             $imageUrl = $metaImage->attr('content');
-            if (!empty($imageUrl)) {
+            if (!empty($imageUrl) && !str_starts_with($imageUrl, 'data:image/')) {
                 return $imageUrl;
             }
         }
 
+        // فال‌بک 2: متا تگ جایگزین
         if (!empty($this->config['news_selectors']['cover_alt'])) {
             $altImage = $crawler->filter($this->config['news_selectors']['cover_alt'])->first();
             if ($altImage->count() > 0) {
                 $imageUrl = $altImage->attr('content') ?? $altImage->attr('src');
-                if (!empty($imageUrl)) {
+                if (!empty($imageUrl) && !str_starts_with($imageUrl, 'data:image/')) {
                     return $imageUrl;
                 }
             }
         }
 
+        // فال‌بک 3: اولین تصویر بزرگ در صفحه
         $firstLargeImg = $crawler->filter('img')->reduce(function (Crawler $node) {
+            $src = $node->attr('src');
             $width = (int) $node->attr('width');
             $height = (int) $node->attr('height');
-            return $width >= self::MIN_IMAGE_DIMENSION && $height >= self::MIN_IMAGE_DIMENSION;
+            return !empty($src) && !str_starts_with($src, 'data:image/') &&
+                $width >= self::MIN_IMAGE_DIMENSION && $height >= self::MIN_IMAGE_DIMENSION;
         })->first();
 
         if ($firstLargeImg->count() > 0) {
@@ -186,9 +166,6 @@ class ProcessNewsImageJob implements ShouldQueue
         return null;
     }
 
-    /**
-     * Normalize image URL to absolute.
-     */
     private function normalizeImageUrl(string $imageUrl): string
     {
         if (!str_starts_with($imageUrl, 'http')) {
@@ -198,9 +175,6 @@ class ProcessNewsImageJob implements ShouldQueue
         return $imageUrl;
     }
 
-    /**
-     * Process and store an image, return cover path if successful.
-     */
     private function processImage(string $imageUrl, string $folderPath, $disk): ?string
     {
         try {
@@ -232,11 +206,11 @@ class ProcessNewsImageJob implements ShouldQueue
                 $imageContent = $image->toWebp(self::IMAGE_QUALITY);
 
                 // نام فایل بر اساس slug
-                $imageName = Str::slug($this->slug) . '.webp';
+                $imageName = Str::slug($this->slug) . '-' . uniqid() . '.webp';
                 $imagePath = $folderPath . '/' . $imageName;
 
                 $disk->put($imagePath, $imageContent);
-                return  $imagePath;
+                return $imagePath;
             } else {
                 Log::warning("تصویر {$imageUrl} ابعاد کافی ندارد: {$width}x{$height}");
                 return null;
@@ -247,9 +221,6 @@ class ProcessNewsImageJob implements ShouldQueue
         }
     }
 
-    /**
-     * Update news cover in DB.
-     */
     private function updateNewsCover(string $coverPath): void
     {
         \Illuminate\Support\Facades\DB::table('news')

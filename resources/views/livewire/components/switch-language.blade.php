@@ -45,7 +45,7 @@ new class extends Component {
     $locales = ['fa' => 'فارسی', 'en' => 'English', 'ar' => 'العربی'];
 @endphp
 
-<div class="dropdown dropdown-end hidden lg:block">
+<div class="dropdown dropdown-end">
     <div tabindex="0" role="button" class="btn btn-sm btn-success btn-circle">
         {{ strtoupper(app()->getLocale()) }}
     </div>

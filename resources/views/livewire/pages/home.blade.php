@@ -1,35 +1,42 @@
 <?php
-use function Livewire\Volt\{mount,with, usesPagination};
+use Livewire\WithoutUrlPagination;
+use Livewire\WithPagination;
+use Livewire\Volt\Component;
 use Artesaos\SEOTools\Facades\SEOMeta;
 use Artesaos\SEOTools\Facades\OpenGraph;
 use App\Models\News;
 
-usesPagination();
+new class extends Component {
+    use WithPagination,WithoutUrlPagination;
 
-with(fn () => ['newsItems'=>  News::where('status', 'published')
-    ->orderBy('published_at', 'desc')
-    ->paginate(33)]);
+    public function with(): array
+    {
+        return [
+            'newsItems' =>  News::where('status', 'published')
+                ->orderBy('published_at', 'desc')
+                ->paginate(33),
+        ];
+    }
+    public function mount()
+    {
+        // تنظیمات SEO Meta
+        SEOMeta::setTitle(__('news.title'));
+        SEOMeta::setDescription(__('metadata.description'));
+        SEOMeta::setCanonical(request()->url());
 
-mount(function () {
-    // تعریف state برای داده‌های اخبار
+        // تنظیمات OpenGraph
+        OpenGraph::setTitle(__('news.title'));
+        OpenGraph::setDescription(__('metadata.description'));
+        OpenGraph::setUrl(request()->url());
+        OpenGraph::addProperty('type', 'webpage');
 
-    // تنظیمات SEO Meta
-    SEOMeta::setTitle(__('news.title'));
-    SEOMeta::setDescription(__('metadata.description'));
-    SEOMeta::setCanonical(request()->url());
+        // تنظیمات Twitter Card
+        SEOMeta::addMeta('twitter:card', 'summary_large_image');
+        SEOMeta::addMeta('twitter:title', __('news.title'));
+        SEOMeta::addMeta('twitter:description', __('metadata.description'));
+    }
+} ?>
 
-    // تنظیمات OpenGraph
-    OpenGraph::setTitle(__('news.title'));
-    OpenGraph::setDescription(__('metadata.description'));
-    OpenGraph::setUrl(request()->url());
-    OpenGraph::addProperty('type', 'webpage');
-
-    // تنظیمات Twitter Card
-    SEOMeta::addMeta('twitter:card', 'summary_large_image');
-    SEOMeta::addMeta('twitter:title', __('news.title'));
-    SEOMeta::addMeta('twitter:description', __('metadata.description'));
-});
-?>
 
 <div>
     <div class="py-5">
@@ -40,7 +47,7 @@ mount(function () {
             @if (!$newsItems || $newsItems->isEmpty())
                 <p class="text-gray-500">هیچ خبری برای نمایش وجود ندارد.</p>
             @else
-                <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-2 gap-6">
+                <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
                     @foreach ($newsItems as $item)
                         <div>
                             <livewire:components.news-card :news="$item" />
