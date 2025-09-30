@@ -17,7 +17,7 @@ class NewsCard extends Component
     public function cleanContent($content)
     {
         $content = preg_replace('/<\/?[^>]+(>|$)/', '', $content);
-        return mb_substr($content, 0, 190, 'UTF-8') . '...';
+        return mb_substr($content, 0, 330, 'UTF-8') . '...';
     }
     public function render()
     {

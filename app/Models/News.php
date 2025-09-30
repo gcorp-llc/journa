@@ -91,6 +91,6 @@ class News extends Model
         $content = $this->getTranslation('content', app()->getLocale());
 
         // تگ‌های HTML را حذف کرده و به 150 کاراکتر محدود می‌کند.
-        return Str::limit(strip_tags($content), 150);
+        return Str::limit(strip_tags($content), 330);
     }
 }

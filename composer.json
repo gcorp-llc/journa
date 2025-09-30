@@ -22,6 +22,7 @@
         "livewire/livewire": "^3.6",
         "livewire/volt": "^1.7",
         "mcamara/laravel-localization": "^2.3",
+        "morilog/jalali": "^3.4",
         "phiki/phiki": "^2.0",
         "spatie/crawler": "^8.4",
         "spatie/laravel-sitemap": "^7.3",

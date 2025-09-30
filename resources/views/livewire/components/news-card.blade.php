@@ -8,21 +8,34 @@
                 loading="lazy"
                 onerror="this.src='{{ asset('placeholder.png') }}'"
             />
+
+            <div class="absolute bottom-2 right-2 badge badge-soft badge-secondary text-xs font-medium">
+                @php
+                    $locale = app()->getLocale();
+                    if ($locale == 'fa') {
+                        $date = \Morilog\Jalali\Jalalian::fromDateTime($news->published_at)->format('Y/m/d');
+                    } elseif ($locale == 'ar') {
+                        $date = (new DateTime($news->published_at))->format('Y/m/d');
+                    } else {
+                        $date = $news->published_at->format('Y/m/d');
+                    }
+                @endphp
+                {{ $date }}
+            </div>
+            <div class="absolute bottom-2 left-2 badge badge-soft badge-primary text-xs font-medium">
+                {{ $news->newsSite->name }}
+            </div>
         </div>
+
         <div class="card-body p-4">
             <div class="flex items-center justify-between mb-2">
                 <h2 class="card-title text-lg font-semibold line-clamp-2">
-                    {{ $news['title'] }}
+                    {{ $news->title }}
                 </h2>
-                @if ($news['news_site_name'])
-                    <span class="text-xs text-gray-500">
-                        {{ $news['news_site_name'] }}
-                    </span>
-                @endif
             </div>
 
-            <p class="text-gray-600 text-sm line-clamp-2">
-                {{ $cleanContent }}
+            <p class="text-gray-600  line-clamp-4">
+                {{ Str::limit(strip_tags($news->content),333) }}
             </p>
         </div>
     </div>
