@@ -51,7 +51,7 @@ new class extends Component {
     <div class="breadcrumbs text-sm">
         <ul>
             <li><a href="/">{{ __('menu.home.title') }}</a></li>
-            <li><a href="{{ '/category/' . $category->slug }}">{{ $category->title}}</a></li>
+            <li><a href="{{ '/cat/' . $category->slug }}">{{ $category->title}}</a></li>
             <li>{{ $childCategory->title}}</li>
         </ul>
     </div>

@@ -122,7 +122,6 @@ new class extends Component {
             <li>
                 <a href="/" class="text-blue-600 hover:underline">{{ __('menu.home.title') }}</a>
             </li>
-            <li class="text-gray-400">/</li>
             <li class="text-gray-600 font-medium">{{ __('search.title') }}</li>
         </ul>
     </nav>
