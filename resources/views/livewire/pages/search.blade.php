@@ -142,7 +142,7 @@ new class extends Component {
             </div>
         @else
             <div class="mb-4 text-sm text-gray-600">
-                {{ $news->total() === 1 ? __('search.totalResultsSingular') : __('search.totalResults', ['count' => $news->total()]) }}
+                {{ __('search.totalResults', ['count' => $news->total()]) }}
             </div>
             <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
                 @foreach ($news as $item)

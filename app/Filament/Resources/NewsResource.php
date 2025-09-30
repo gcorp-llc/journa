@@ -18,7 +18,10 @@ class NewsResource extends Resource
     use Translatable;
 
     protected static ?string $model = News::class;
-
+    public static function getNavigationBadge(): ?string
+    {
+        return static::getModel()::count();
+    }
     protected static ?string $navigationIcon = 'heroicon-o-newspaper';
 
     protected static ?string $navigationLabel = 'اخبار';
