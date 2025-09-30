@@ -1,6 +1,6 @@
 <a href="{{ url(app()->getLocale() . '/news/' . $news->slug) }}" class="block" aria-label="{{ $news->title }}">
     <div class="card bg-base-100 shadow-lg hover:shadow-xl transition-all duration-300 transform hover:-translate-y-1 rounded-xl overflow-hidden">
-        <div class="relative w-full h-48 bg-gray-100">
+        <div class="relative w-full h-48 ">
             <img
                 src="{{ Storage::url($news->cover) ?? asset('placeholder.png') }}"
                 alt="{{ $news->title }}"
