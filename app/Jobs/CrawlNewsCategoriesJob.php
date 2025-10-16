@@ -32,10 +32,13 @@ class CrawlNewsCategoriesJob implements ShouldQueue
     public function handle()
     {
         try {
-            $site = $this->getSiteInfo();
-            $this->config = $this->getConfig();
+            // بارگذاری اطلاعات
+            $this->loadSiteAndConfig();
+
             $html = $this->fetchPage();
             $items = $this->extractLinks($html, $this->config);
+
+            // 👇 بهبود: فیلتر کردن انبوه لینک‌ها (کاهش کوئری‌های دیتابیس)
             $filteredItems = $this->filterValidLinks($items, $this->config);
 
             if (empty($filteredItems)) {
@@ -46,7 +49,7 @@ class CrawlNewsCategoriesJob implements ShouldQueue
             $this->dispatchContentJobs($filteredItems);
         } catch (\Exception $e) {
             Log::error("خطا در خزش دسته‌بندی {$this->url}: {$e->getMessage()}", [
-                'exception' => $e,
+                'exception' => $e->getMessage(),
                 'site_id' => $this->siteId,
                 'category_id' => $this->categoryId
             ]);
@@ -54,23 +57,19 @@ class CrawlNewsCategoriesJob implements ShouldQueue
         }
     }
 
-    private function getSiteInfo()
+    private function loadSiteAndConfig()
     {
         $site = DB::table('news_sites')->find($this->siteId);
         if (!$site) {
             throw new \Exception("سایت با شناسه {$this->siteId} پیدا نشد.");
         }
         $this->siteName = json_decode($site->name)->en;
-        return $site;
-    }
 
-    private function getConfig()
-    {
         $config = config('crawler.sites.' . $this->siteName);
         if (empty($config['category_selectors']['links'])) {
             throw new \Exception("سلکتور لینک برای سایت {$this->siteName} تعریف نشده است.");
         }
-        return $config;
+        $this->config = $config;
     }
 
     private function fetchPage()
@@ -82,57 +81,66 @@ class CrawlNewsCategoriesJob implements ShouldQueue
         return $response->body();
     }
 
-    private function normalizeUrl(string $link)
+    private function normalizeUrl(string $link): string
     {
         if (empty($link) || !is_string($link)) {
             return '';
         }
         if (!str_starts_with($link, 'http')) {
-            return rtrim($this->url, '/') . '/' . ltrim($link, '/');
+            $baseUrl = parse_url($this->url, PHP_URL_SCHEME) . '://' . parse_url($this->url, PHP_URL_HOST);
+            return rtrim($baseUrl, '/') . '/' . ltrim($link, '/');
         }
         return $link;
     }
 
-    private function extractLinks(string $html, array $config)
+    private function extractLinks(string $html, array $config): array
     {
         $crawler = new Crawler($html);
+
+        // استخراج و نرمال‌سازی لینک‌ها
         $links = $crawler->filter($config['category_selectors']['links'])->each(
-            fn(Crawler $node) => ['link' => $this->normalizeUrl($node->attr('href') ?? '')]
+            fn(Crawler $node) => $this->normalizeUrl($node->attr('href') ?? '')
         );
 
-        $uniqueLinks = [];
-        $seenUrls = [];
+        // 👇 بهبود: حذف موارد خالی و تکراری به صورت بهینه با استفاده از توابع آرایه‌ای
+        $uniqueLinks = array_filter(array_unique($links));
 
-        foreach ($links as $item) {
-            if (!empty($item['link']) && !isset($seenUrls[$item['link']])) {
-                $seenUrls[$item['link']] = true;
-                $uniqueLinks[] = $item;
+        // تبدیل به فرمت نهایی
+        return array_map(fn($link) => ['link' => $link], $uniqueLinks);
+    }
+
+    private function filterValidLinks(array $items, array $config): array
+    {
+        $allLinks = array_column($items, 'link');
+
+        if (empty($allLinks)) {
+            return [];
+        }
+
+        // کوئری تکی برای یافتن لینک‌های موجود (Bulk Check) -> کاهش شدید کوئری دیتابیس
+        $existingUrls = DB::table('news')
+            ->whereIn('source_url', $allLinks)
+            ->pluck('source_url')
+            ->toArray();
+
+        $filteredItems = [];
+        foreach ($items as $item) {
+            if (empty($item['link'])) {
+                continue;
+            }
+
+            // حذف لینک‌های تکراری و لینک‌های موجود در دیتابیس
+            if (in_array($item['link'], $existingUrls)) {
+                continue;
+            }
+
+            // اعمال فیلتر کلمات کلیدی
+            if (empty($config['category_selectors']['filter']) || $this->containsValidKeywords($item['link'], $config)) {
+                $filteredItems[] = $item;
             }
         }
 
-        return $uniqueLinks;
-    }
-
-    private function filterValidLinks(array $items, array $config)
-    {
-        $filteredItems = array_filter($items, function ($item) use ($config) {
-            if (empty($item['link'])) {
-                return false;
-            }
-
-            $exists = DB::table('news')->where('source_url', $item['link'])->exists();
-            if ($exists) {
-                return false;
-            }
-
-            if (empty($config['category_selectors']['filter'])) {
-                return true;
-            }
-
-            return $this->containsValidKeywords($item['link'], $config);
-        });
-
-        return array_values($filteredItems);
+        return $filteredItems;
     }
 
     private function containsValidKeywords(string $link, array $config)
@@ -157,8 +165,6 @@ class CrawlNewsCategoriesJob implements ShouldQueue
     private function dispatchContentJobs(array $items)
     {
         $maxItems = app()->environment('testing') ? 10 : ($this->config['max_items'] ?? 50);
-        $rateLimit = $this->config['rate_limit'] ?? 2;
-        $delaySeconds = app()->environment('testing') ? 0 : rand(1, $rateLimit * 5);
 
         Log::info('Dispatching content jobs:', [
             'site_name' => $this->siteName,

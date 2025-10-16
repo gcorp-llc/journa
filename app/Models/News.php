@@ -35,8 +35,10 @@ class News extends Model
      * @var array
      */
     protected $casts = [
-        // <<<< اصلاح: title و content توسط پکیج مدیریت می‌شوند و نیازی به کست دستی ندارند.
+       
         'published_at' => 'datetime',
+        'title'=>'json:unicode',
+        'content'=>'json:unicode'
     ];
 
     /**
@@ -93,4 +95,6 @@ class News extends Model
         // تگ‌های HTML را حذف کرده و به 150 کاراکتر محدود می‌کند.
         return Str::limit(strip_tags($content), 330);
     }
+
+
 }

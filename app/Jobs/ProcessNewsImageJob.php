@@ -50,13 +50,8 @@ class ProcessNewsImageJob implements ShouldQueue
                 $disk->makeDirectory($folderPath);
             }
 
-            if ($this->html) {
-                Log::info("استفاده از HTML پاس داده شده برای پردازش تصویر خبر ID: {$this->newsId}");
-                $html = $this->html;
-            } else {
-                Log::warning("HTML پاس داده نشده بود. Fetch مجدد برای خبر ID: {$this->newsId}");
-                $html = $this->fetchPage();
-            }
+            // استفاده از HTML پاس داده شده برای کاهش درخواست HTTP
+            $html = $this->html ?? $this->fetchPage();
 
             $crawler = new Crawler($html);
             $imageUrl = $this->extractImageUrl($crawler);
@@ -75,7 +70,7 @@ class ProcessNewsImageJob implements ShouldQueue
             }
         } catch (\Exception $e) {
             Log::error("خطا در پردازش تصویر برای خبر ID {$this->newsId}: {$e->getMessage()}", [
-                'exception' => $e,
+                'exception' => $e->getMessage(),
             ]);
             $this->release(self::RETRY_DELAY);
         }
@@ -153,10 +148,9 @@ class ProcessNewsImageJob implements ShouldQueue
         // فال‌بک 3: اولین تصویر بزرگ در صفحه
         $firstLargeImg = $crawler->filter('img')->reduce(function (Crawler $node) {
             $src = $node->attr('src');
-            $width = (int) $node->attr('width');
-            $height = (int) $node->attr('height');
+            // در زمان خزش، width و height ممکن است لود نشده باشند، لذا فیلتر بر اساس تگ‌های img ساده‌تر
             return !empty($src) && !str_starts_with($src, 'data:image/') &&
-                $width >= self::MIN_IMAGE_DIMENSION && $height >= self::MIN_IMAGE_DIMENSION;
+                (Str::contains($src, ['large', 'medium', 'content', 'uploads']) || (int) $node->attr('width') > self::MIN_IMAGE_DIMENSION);
         })->first();
 
         if ($firstLargeImg->count() > 0) {
@@ -202,7 +196,7 @@ class ProcessNewsImageJob implements ShouldQueue
                 // تغییر سایز با حفظ نسبت
                 $image->scale(width: self::IMAGE_WIDTH);
 
-                // ذخیره به فرمت WebP
+                // ذخیره به فرمت WebP برای افزایش سرعت سایت
                 $imageContent = $image->toWebp(self::IMAGE_QUALITY);
 
                 // نام فایل بر اساس slug

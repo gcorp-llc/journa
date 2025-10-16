@@ -6,136 +6,391 @@ use App\Enums\Locale;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Log;
 use Stichoza\GoogleTranslate\GoogleTranslate;
+use Throwable;
 
 class TranslationService
 {
-    private const CHUNK_SIZE = 2900;
+    // ثوابت (Constants) جایگزین مقادیر کانفیگ شدند
+    private const CACHE_PREFIX = 'translation';
+    private const SPELLING_CACHE_PREFIX = 'spelling_correction';
+    private const CHUNK_SIZE = 4000;
+    private const GOOGLE_SENTENCE_CHUNK_SIZE = 2000;
+    private const CACHE_TTL_HOURS = 168; // 1 هفته کشینگ
     private const MAX_RETRIES = 3;
     private const RETRY_DELAY_SECONDS = 2;
-    private const CACHE_TTL_HOURS = 168; // 1 week
 
     /**
-     * یک متن را به تمام زبان‌های پشتیبانی شده ترجمه می‌کند.
-     * @param string $text متنی که باید ترجمه شود.
-     * @param string|null $sourceLang زبان مبدأ (اختیاری).
+     * ترجمه متن به همه زبان‌های تعریف شده در `Locale` enum.
+     *
+     * @param string $text متن ورودی برای ترجمه
+     * @param string|null $sourceLang زبان مبدا (در صورت خالی بودن، به صورت خودکار تشخیص داده می‌شود)
+     * @return array<string, string> آرایه‌ای از ترجمه‌ها با کلید زبان
      */
     public function translateToAll(string $text, ?string $sourceLang = null): array
     {
-        if (empty(trim($text))) {
+        $text = trim($text);
+
+        if (empty($text)) {
             return $this->getEmptyTranslationsArray();
         }
 
+        // تشخیص زبان مبدأ
         $sourceLang = $sourceLang ?? $this->detectLanguage($text);
 
-        $translations = [];
+        // اصلاح املایی (Spelling Correction)
+        $text = $this->correctSpelling($text, $sourceLang) ?? $text;
+
+        $translations = [$sourceLang => $text];
+
         foreach (Locale::cases() as $targetLocale) {
             $targetLang = $targetLocale->value;
-            $translations[$targetLang] = ($targetLang === $sourceLang)
-                ? $text
-                : $this->translate($text, $targetLang, $sourceLang);
+
+            if ($targetLang === $sourceLang) {
+                continue;
+            }
+
+            $translated = $this->translate($text, $targetLang, $sourceLang);
+
+            // استفاده از fallback فقط در صورت واقعی شکست خوردن ترجمه
+            if ($this->isTranslationFailed($translated, $text)) {
+                Log::warning('Translation failed, attempting fallback', [
+                    'source' => $sourceLang,
+                    'target' => $targetLang
+                ]);
+                $translated = $this->translateWithFallback($text, $targetLang, $sourceLang);
+            }
+
+            $translations[$targetLang] = $translated;
         }
 
         return $translations;
     }
 
     /**
-     * **متد بازگردانده شده:**
-     * فیلدهای مشخص شده از یک آرایه را به صورت گروهی ترجمه می‌کند.
+     * فیلدهای مشخص‌شده از یک آرایه را ترجمه می‌کند.
      */
     public function translateArray(array $data, array $fields): array
     {
         $translatedData = [];
+
         foreach ($fields as $field) {
-            $translatedData[$field] = !empty($data[$field])
+            $translatedData[$field] = isset($data[$field]) && !empty(trim($data[$field]))
                 ? $this->translateToAll($data[$field])
                 : $this->getEmptyTranslationsArray();
         }
+
         return $translatedData;
     }
 
+    /**
+     * زبان متن را با استفاده از الگوهای کاراکتری تشخیص می‌دهد.
+     */
     public function detectLanguage(string $text): string
     {
-        $sample = mb_substr($text, 0, 500);
+        $sample = mb_substr($text, 0, 400);
 
-        if (preg_match('/[پچژگ]/u', $sample)) {
+        // بررسی فارسی - کاراکترهای منحصر به فرد فارسی
+        if (preg_match('/[پچژگکی]/u', $sample)) {
             return Locale::FA->value;
         }
 
-        $scores = [
-            Locale::FA->value => preg_match_all('/[\x{0600}-\x{06FF}]/u', $sample),
-            Locale::EN->value => preg_match_all('/[a-zA-Z]/u', $sample),
-        ];
-
-        arsort($scores);
-        $detectedLang = key($scores);
-
-        return ($scores[$detectedLang] > $scores[Locale::EN->value]) ? $detectedLang : Locale::EN->value;
-    }
-
-    private function translate(string $text, string $targetLang, string $sourceLang): ?string
-    {
-        if (mb_strlen($text) <= self::CHUNK_SIZE) {
-            return $this->translateWithRetry($text, $targetLang, $sourceLang);
+        // بررسی عربی - کاراکترهای منحصر به فرد عربی
+        if (preg_match('/[ضصثقطظذ]/u', $sample)) {
+            return Locale::AR->value;
         }
 
-        $chunks = $this->splitIntoChunks($text);
+        // بررسی انگلیسی
+        if (preg_match('/[a-zA-Z]/u', $sample)) {
+            return Locale::EN->value;
+        }
+
+        return Locale::EN->value;
+    }
+
+    /**
+     * ترجمه یک متن با استفاده از Google Translate.
+     * این متد متن‌های طولانی را به قطعات کوچک‌تر تقسیم می‌کند.
+     */
+    private function translate(string $text, string $targetLang, string $sourceLang): string
+    {
+        $chunkSize = self::CHUNK_SIZE;
+
+        if (mb_strlen($text) <= $chunkSize) {
+            return $this->translateChunk($text, $targetLang, $sourceLang);
+        }
+
+        return $this->translateLongText($text, $targetLang, $sourceLang, $chunkSize);
+    }
+
+    /**
+     * ترجمه متن‌های طولانی با تقسیم به chunks
+     *
+     * نکته: تأخیر (usleep) بین chunkها برای بهینه‌سازی سرعت حذف شد.
+     */
+    private function translateLongText(string $text, string $targetLang, string $sourceLang, int $chunkSize): string
+    {
+        $chunks = $this->splitIntoChunks($text, $chunkSize);
         $translatedChunks = [];
 
+        Log::info('Translating chunked text', [
+            'chunks' => count($chunks),
+            'source' => $sourceLang,
+            'target' => $targetLang
+        ]);
+
         foreach ($chunks as $chunk) {
-            $translatedChunk = $this->translateWithRetry($chunk, $targetLang, $sourceLang);
-            if ($translatedChunk === null) {
-                Log::error("Failed to translate a chunk.", compact('targetLang', 'sourceLang'));
-                return null;
-            }
-            $translatedChunks[] = $translatedChunk;
-            usleep(500000); // 0.5-second delay
+            $translatedChunks[] = $this->translateChunk($chunk, $targetLang, $sourceLang);
         }
 
         return implode("\n\n", $translatedChunks);
     }
 
-    private function translateWithRetry(string $text, string $targetLang, string $sourceLang): ?string
+    /**
+     * یک قطعه از متن را با استفاده از کش و Google Translate ترجمه می‌کند.
+     */
+    private function translateChunk(string $text, string $targetLang, string $sourceLang): string
     {
-        $cacheKey = 'translation:' . md5($text . $sourceLang . $targetLang);
+        $cacheKey = $this->generateCacheKey($text, $sourceLang, $targetLang);
+        $cacheTtl = self::CACHE_TTL_HOURS;
 
-        return Cache::remember($cacheKey, now()->addHours(self::CACHE_TTL_HOURS), function () use ($text, $targetLang, $sourceLang) {
-            for ($attempt = 1; $attempt <= self::MAX_RETRIES; $attempt++) {
-                try {
-                    $translator = new GoogleTranslate($targetLang, $sourceLang, ['timeout' => 40]);
-                    $result = $translator->translate($text);
-                    if (!empty($result)) return $result;
-                } catch (\Throwable $e) {
-                    Log::warning("Translation attempt #{$attempt} failed", ['error' => $e->getMessage()]);
-                    if ($attempt < self::MAX_RETRIES) sleep(self::RETRY_DELAY_SECONDS);
+        return Cache::remember(
+            $cacheKey,
+            now()->addHours($cacheTtl),
+            fn() => $this->translateWithGoogle($text, $targetLang, $sourceLang)
+        );
+    }
+
+    /**
+     * ترجمه با استفاده از کتابخانه Google Translate.
+     */
+    private function translateWithGoogle(string $text, string $targetLang, string $sourceLang): string
+    {
+        $sentenceChunkSize = self::GOOGLE_SENTENCE_CHUNK_SIZE;
+
+        if (mb_strlen($text) <= $sentenceChunkSize) {
+            return $this->translateGoogleSingleChunk($text, $targetLang, $sourceLang);
+        }
+
+        return $this->translateGoogleWithSentenceSplitting($text, $targetLang, $sourceLang, $sentenceChunkSize);
+    }
+
+    /**
+     * ترجمه با تقسیم به جملات
+     */
+    private function translateGoogleWithSentenceSplitting(
+        string $text,
+        string $targetLang,
+        string $sourceLang,
+        int $chunkSize
+    ): string {
+        $sentences = $this->splitIntoSentences($text);
+        $chunks = $this->groupSentencesIntoChunks($sentences, $chunkSize);
+        $translatedChunks = [];
+
+        foreach ($chunks as $chunk) {
+            $translated = $this->translateGoogleSingleChunk($chunk, $targetLang, $sourceLang);
+            // در صورت شکست ترجمه، از متن اصلی استفاده کن
+            $translatedChunks[] = !empty($translated) ? $translated : $chunk;
+        }
+
+        return implode('. ', $translatedChunks);
+    }
+
+    /**
+     * ترجمه یک chunk کوچک با Google با retry.
+     */
+    private function translateGoogleSingleChunk(
+        string $chunk,
+        string $targetLang,
+        string $sourceLang,
+        ?int $maxRetries = null
+    ): string {
+        $maxRetries = $maxRetries ?? self::MAX_RETRIES;
+        $retryDelay = self::RETRY_DELAY_SECONDS;
+
+        for ($attempt = 1; $attempt <= $maxRetries; $attempt++) {
+            try {
+                // تایم‌آوت 30 ثانیه برای اطمینان از کامل شدن درخواست
+                $translator = new GoogleTranslate($targetLang, $sourceLang, ['timeout' => 30]);
+                $result = $translator->translate($chunk);
+
+                if ($this->isValidTranslation($result, $chunk)) {
+                    return trim($result);
+                }
+            } catch (Throwable $e) {
+                Log::warning("Google Translate failed", [
+                    'attempt' => $attempt,
+                    'max_retries' => $maxRetries,
+                    'error' => $e->getMessage(),
+                    'source' => $sourceLang,
+                    'target' => $targetLang
+                ]);
+
+                if ($attempt < $maxRetries) {
+                    sleep($retryDelay);
                 }
             }
+        }
+
+        return ''; // برگرداندن رشته خالی پس از تلاش‌های مکرر ناموفق
+    }
+
+    /**
+     * اصلاح اشتباهات املایی با ترجمه به انگلیسی و برگرداندن به زبان اصلی.
+     */
+    private function correctSpelling(string $text, string $sourceLang): ?string
+    {
+        if ($sourceLang === Locale::EN->value) {
             return null;
+        }
+
+        $cacheKey = $this->generateSpellingCacheKey($text, $sourceLang);
+        $cacheTtl = self::CACHE_TTL_HOURS;
+
+        return Cache::remember($cacheKey, now()->addHours($cacheTtl), function () use ($text, $sourceLang) {
+            // 1. ترجمه به انگلیسی
+            $toEnglish = $this->translateWithGoogle($text, Locale::EN->value, $sourceLang);
+
+            if (empty($toEnglish)) {
+                return null;
+            }
+
+            // 2. ترجمه بازگشتی به زبان مبدأ
+            $backToSource = $this->translateWithGoogle($toEnglish, $sourceLang, Locale::EN->value);
+
+            return !empty($backToSource) ? $backToSource : null;
         });
     }
 
-    private function splitIntoChunks(string $text): array
+    /**
+     * ترجمه با استفاده از مسیر fallback (از طریق انگلیسی)
+     */
+    private function translateWithFallback(string $text, string $targetLang, string $sourceLang): string
+    {
+        // 1. ترجمه به انگلیسی
+        $intermediate = $this->translate($text, Locale::EN->value, $sourceLang);
+
+        if (!empty($intermediate) && $intermediate !== $text) {
+            // 2. ترجمه از انگلیسی به زبان مقصد
+            $final = $this->translate($intermediate, $targetLang, Locale::EN->value);
+            return !empty($final) ? $final : $text;
+        }
+
+        return $text;
+    }
+
+    /**
+     * بررسی اینکه آیا ترجمه شکست خورده است (ترجمه خالی است یا عین متن اصلی)
+     */
+    private function isTranslationFailed(?string $translated, string $original): bool
+    {
+        return empty($translated) || trim($translated) === '' || $translated === $original;
+    }
+
+    /**
+     * بررسی معتبر بودن ترجمه
+     */
+    private function isValidTranslation(?string $result, string $original): bool
+    {
+        return !empty($result) && trim($result) !== '' && trim($result) !== trim($original);
+    }
+
+    /**
+     * تقسیم متن به جملات
+     */
+    private function splitIntoSentences(string $text): array
+    {
+        // تقسیم بر اساس نقطه، علامت تعجب، علامت سوال، یا علامت سوال فارسی
+        return preg_split('/(?<=[.!?؟])\s+/', $text, -1, PREG_SPLIT_NO_EMPTY) ?: [$text];
+    }
+
+    /**
+     * گروه‌بندی جملات به chunks با اندازه مشخص
+     */
+    private function groupSentencesIntoChunks(array $sentences, int $maxSize): array
     {
         $chunks = [];
         $currentChunk = '';
-        $sentences = preg_split('/(?<=[.!?؟])\s+/', $text, -1, PREG_SPLIT_NO_EMPTY);
 
         foreach ($sentences as $sentence) {
-            if (mb_strlen($sentence) > self::CHUNK_SIZE) {
+            $potential = $currentChunk ? $currentChunk . '. ' . $sentence : $sentence;
+
+            if (mb_strlen($potential) > $maxSize) {
                 if (!empty($currentChunk)) {
-                    $chunks[] = $currentChunk;
+                    $chunks[] = trim($currentChunk);
+                }
+                $currentChunk = $sentence;
+            } else {
+                $currentChunk = $potential;
+            }
+        }
+
+        if (!empty($currentChunk)) {
+            $chunks[] = trim($currentChunk);
+        }
+
+        return $chunks;
+    }
+
+    /**
+     * متن را به قطعات کوچک‌تر بر اساس جملات تقسیم می‌کند.
+     */
+    private function splitIntoChunks(string $text, int $chunkSize): array
+    {
+        $sentences = $this->splitIntoSentences($text);
+        $chunks = [];
+        $currentChunk = '';
+
+        foreach ($sentences as $sentence) {
+            // اگر جمله خیلی طولانی است، آن را به کلمات تقسیم کن
+            if (mb_strlen($sentence) > $chunkSize) {
+                if (!empty($currentChunk)) {
+                    $chunks[] = trim($currentChunk);
                     $currentChunk = '';
                 }
-                foreach (mb_str_split($sentence, self::CHUNK_SIZE) as $subChunk) {
-                    $chunks[] = $subChunk;
-                }
+
+                // تقسیم جمله طولانی به subchunks بر اساس کلمات
+                array_push($chunks, ...$this->splitLongSentence($sentence, $chunkSize));
                 continue;
             }
 
-            if (mb_strlen($currentChunk) + mb_strlen($sentence) + 1 > self::CHUNK_SIZE) {
-                $chunks[] = $currentChunk;
+            $potential = $currentChunk ? $currentChunk . ' ' . $sentence : $sentence;
+
+            if (mb_strlen($potential) > $chunkSize) {
+                $chunks[] = trim($currentChunk);
                 $currentChunk = $sentence;
             } else {
-                $currentChunk .= (empty($currentChunk) ? '' : ' ') . $sentence;
+                $currentChunk = $potential;
+            }
+        }
+
+        if (!empty($currentChunk)) {
+            $chunks[] = trim($currentChunk);
+        }
+
+        return $chunks;
+    }
+
+    /**
+     * تقسیم جملات طولانی به subchunks بر اساس کلمات
+     */
+    private function splitLongSentence(string $sentence, int $maxSize): array
+    {
+        // تقسیم به کلمات با استفاده از فضای خالی
+        $words = preg_split('/\s+/', $sentence, -1, PREG_SPLIT_NO_EMPTY);
+        $chunks = [];
+        $currentChunk = '';
+
+        foreach ($words as $word) {
+            $potential = $currentChunk ? $currentChunk . ' ' . $word : $word;
+
+            if (mb_strlen($potential) > $maxSize) {
+                if (!empty($currentChunk)) {
+                    $chunks[] = $currentChunk;
+                }
+                $currentChunk = $word;
+            } else {
+                $currentChunk = $potential;
             }
         }
 
@@ -146,6 +401,36 @@ class TranslationService
         return $chunks;
     }
 
+    /**
+     * تولید کلید کش برای ترجمه
+     */
+    private function generateCacheKey(string $text, string $sourceLang, string $targetLang): string
+    {
+        return sprintf(
+            '%s:google:%s-%s:%s',
+            self::CACHE_PREFIX,
+            $sourceLang,
+            $targetLang,
+            md5($text)
+        );
+    }
+
+    /**
+     * تولید کلید کش برای اصلاح املایی
+     */
+    private function generateSpellingCacheKey(string $text, string $sourceLang): string
+    {
+        return sprintf(
+            '%s:%s:%s',
+            self::SPELLING_CACHE_PREFIX,
+            $sourceLang,
+            md5($text)
+        );
+    }
+
+    /**
+     * یک آرایه خالی برای ترجمه‌ها برمی‌گرداند.
+     */
     private function getEmptyTranslationsArray(): array
     {
         return array_fill_keys(array_column(Locale::cases(), 'value'), '');

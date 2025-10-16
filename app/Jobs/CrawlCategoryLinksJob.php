@@ -21,42 +21,52 @@ class CrawlCategoryLinksJob implements ShouldQueue
     public function handle()
     {
         try {
+            // 1. اولویت‌بندی و محدود کردن کوئری
             $query = DB::table('news_site_categories')
-                ->where('last_crawled', '<', now()->subHours(1))
-                ->orWhereNull('last_crawled');
+                ->where(function ($query) {
+                    $query->where('last_crawled', '<', now()->subHours(1))
+                        ->orWhereNull('last_crawled');
+                })
+                ->when($this->siteId, fn ($q) => $q->where('news_site_id', $this->siteId));
 
-            if ($this->siteId) {
-                $query->where('news_site_id', $this->siteId);
-            }
-
-            // در حالت تست فقط اولین دسته‌بندی را انتخاب کن
-            if (app()->environment('testing')) {
-                $categories = $query->take(1)->get();
-            } else {
-                $categories = $query->get();
-            }
+            // انتخاب محدود و بر اساس قدیمی‌ترین خزش (افزایش سرعت و توزیع بار)
+            $categories = $query->orderBy('last_crawled', 'asc')
+                ->take(app()->environment('testing') ? 1 : 20) // محدودیت برای تست و تولید
+                ->get();
 
             if ($categories->isEmpty()) {
                 Log::info('No categories to crawl.', ['site_id' => $this->siteId]);
                 return;
             }
 
+            $categoriesToUpdate = [];
+
             foreach ($categories as $category) {
-                $delaySeconds = app()->environment('testing') ? 0 : rand(1, 10); // بدون تأخیر در تست
+                $delaySeconds = app()->environment('testing') ? 0 : rand(1, 10);
+
+                // ارسال جاب خزش دسته‌بندی
                 CrawlNewsCategoriesJob::dispatch(
                     $category->news_site_id,
                     $category->category_id,
                     $category->category_url
                 )->delay(now()->addSeconds($delaySeconds));
 
-                DB::table('news_site_categories')->where('id', $category->id)->update(['last_crawled' => now()]);
+                $categoriesToUpdate[] = $category->id;
             }
+
+            // 2. به‌روزرسانی دسته‌ای (Bulk Update) برای افزایش سرعت دیتابیس
+            if (!empty($categoriesToUpdate)) {
+                DB::table('news_site_categories')
+                    ->whereIn('id', $categoriesToUpdate)
+                    ->update(['last_crawled' => now()]);
+            }
+
         } catch (\Exception $e) {
             Log::error("Error in CrawlCategoryLinksJob: {$e->getMessage()}", [
                 'exception' => $e->getTraceAsString(),
                 'site_id' => $this->siteId
             ]);
-            throw $e; // برای اطلاع از خطاها در تست
+            throw $e;
         }
     }
 }

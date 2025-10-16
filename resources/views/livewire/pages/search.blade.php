@@ -7,6 +7,7 @@ use Artesaos\SEOTools\Facades\SEOMeta;
 use Artesaos\SEOTools\Facades\OpenGraph;
 use Illuminate\Support\Facades\Log;
 use Livewire\Attributes\Url;
+use Livewire\Attributes\Computed;
 
 new class extends Component {
     use WithPagination;
@@ -40,6 +41,61 @@ new class extends Component {
         SEOMeta::addMeta('twitter:description', $description);
     }
 
+    #[Computed]
+    public function news()
+    {
+        // Trim search input
+        $trimmedSearch = trim($this->search);
+
+        // Update SEO dynamically based on the search query
+        $this->updateSEO($trimmedSearch);
+
+        // Return empty collection if search is too short
+        if (strlen($trimmedSearch) < 2) {
+            // Return an empty paginator to avoid errors in the view
+            return new \Illuminate\Pagination\LengthAwarePaginator(collect(), 0, 33);
+        }
+
+        try {
+            $query = News::query()->with('newsSite');
+
+            // [IMPROVEMENT] Split search term into words for more relevant results
+            $searchTerms = explode(' ', $trimmedSearch);
+
+            $query->where(function ($q) use ($searchTerms) {
+                foreach ($searchTerms as $term) {
+                    if (!empty($term)) {
+                        $q->where(function ($subQuery) use ($term) {
+                            $subQuery->where("title->{$this->locale}", 'like', '%' . $term . '%')
+                                ->orWhere("content->{$this->locale}", 'like', '%' . $term . '%');
+                        });
+                    }
+                }
+            });
+
+            return $query->latest()->paginate(33);
+
+        } catch (\Exception $e) {
+            Log::error('Search query failed', ['error' => $e->getMessage()]);
+            // Return an empty paginator on error
+            return new \Illuminate\Pagination\LengthAwarePaginator(collect(), 0, 33);
+        }
+    }
+
+    public function updateSEO(string $query): void
+    {
+        $title = $query ? __('search.resultsTitle', ['query' => $query]) : __('search.title');
+        $description = __('search.searchFor', ['query' => $query ?: __('search.placeholder')]);
+
+        SEOMeta::setTitle($title);
+        SEOMeta::setDescription($description);
+        SEOMeta::setCanonical(request()->url());
+
+        OpenGraph::setTitle($title);
+        OpenGraph::setDescription($description);
+        OpenGraph::setUrl(request()->url());
+        OpenGraph::addProperty('type', 'webpage');
+    }
     public function updatingSearch($value)
     {
         $this->resetPage();
@@ -65,7 +121,7 @@ new class extends Component {
                     $locale = $this->locale;
                     $query->where("title->$locale", 'like', '%' . $this->search . '%')
                         ->orWhere("content->$locale", 'like', '%' . $this->search . '%');
-                });
+                })->latest();
 
             $results = $query->paginate(33); // Reduced for better UX
 

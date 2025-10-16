@@ -19,6 +19,7 @@ class CrawlNewsContentJob implements ShouldQueue
     private const RETRY_DELAY = 60;
     private const MIN_PARAGRAPH_LENGTH = 30;
     private const MAX_RETRIES = 3;
+    private const USER_AGENT = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36';
 
     private string $siteName;
     private int $siteId;
@@ -36,6 +37,7 @@ class CrawlNewsContentJob implements ShouldQueue
         $this->siteId = $siteId;
         $this->categoryId = $categoryId;
         $this->url = $url;
+        // از سلکتورهای پاس داده شده استفاده کن تا کوئری کانفیگ تکراری نشود
         $this->config = ['news_selectors' => $newsSelectors];
     }
 
@@ -50,6 +52,11 @@ class CrawlNewsContentJob implements ShouldQueue
 
             $this->html = $this->fetchPage();
             $content = $this->extractContent($this->html, $this->config['news_selectors']);
+
+            if (empty($this->title)) {
+                throw new \Exception("عنوان خبر پیدا نشد.");
+            }
+
             $translations = $this->translateContent($content, $translationService);
             $newsId = $this->saveNews($translations);
             $this->saveCategory($newsId);
@@ -61,6 +68,7 @@ class CrawlNewsContentJob implements ShouldQueue
                 'paragraph_count' => substr_count($content, '<p>'),
             ]);
 
+            // ارسال جاب پردازش تصویر
             ProcessNewsImageJob::dispatch($newsId, $this->siteName, $this->url, $this->config, $this->html, $translations['title']['en'] ?? 'news')
                 ->delay(now()->addSeconds(3));
 
@@ -81,7 +89,7 @@ class CrawlNewsContentJob implements ShouldQueue
     private function fetchPage(): string
     {
         $response = Http::withHeaders([
-            'User-Agent' => 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36',
+            'User-Agent' => self::USER_AGENT,
             'Accept' => 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8',
             'Accept-Language' => 'en-US,en;q=0.5',
             'Accept-Encoding' => 'gzip, deflate',
@@ -276,7 +284,7 @@ class CrawlNewsContentJob implements ShouldQueue
     private function handleError(\Exception $e): void
     {
         Log::error("خطا در خزش محتوا {$this->url}: {$e->getMessage()}", [
-            'exception' => $e,
+            'exception' => $e->getMessage(),
             'site_id' => $this->siteId,
             'category_id' => $this->categoryId,
             'attempt' => $this->attempts()
