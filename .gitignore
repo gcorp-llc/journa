@@ -45,3 +45,4 @@ Homestead.yaml
 
 # Backup files
 *.env.backup
+.env
