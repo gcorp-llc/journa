@@ -6,7 +6,7 @@
                 <input id="my-drawer" type="checkbox" class="drawer-toggle" />
                 <div class="drawer-content">
                     <label for="my-drawer" class="btn btn-ghost btn-circle hover:bg-amber-600">
-                        <x-bi-grid-fill class="w-6 h-6 text-white"/>
+                        <span class="icon-[si--grid-view-fill] w-6 h-6 text-white" role="img" aria-hidden="true"></span>
                     </label>
                 </div>
                 <livewire:components.menu/>

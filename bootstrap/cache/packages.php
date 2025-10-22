@@ -91,11 +91,11 @@
       0 => 'Filament\\Notifications\\NotificationsServiceProvider',
     ),
   ),
-  'filament/spatie-laravel-translatable-plugin' => 
+  'filament/schemas' => 
   array (
     'providers' => 
     array (
-      0 => 'Filament\\SpatieLaravelTranslatablePluginServiceProvider',
+      0 => 'Filament\\Schemas\\SchemasServiceProvider',
     ),
   ),
   'filament/support' => 
@@ -121,9 +121,13 @@
   ),
   'guava/filament-icon-picker' => 
   array (
+    'aliases' => 
+    array (
+      'IconPicker' => 'IconManager',
+    ),
     'providers' => 
     array (
-      0 => 'Guava\\FilamentIconPicker\\FilamentIconPickerServiceProvider',
+      0 => 'Guava\\IconPicker\\IconPickerServiceProvider',
     ),
   ),
   'jenssegers/agent' => 
@@ -142,6 +146,13 @@
     'providers' => 
     array (
       0 => 'Kirschbaum\\PowerJoins\\PowerJoinsServiceProvider',
+    ),
+  ),
+  'lara-zeus/spatie-translatable' => 
+  array (
+    'providers' => 
+    array (
+      0 => 'LaraZeus\\SpatieTranslatable\\SpatieTranslatableServiceProvider',
     ),
   ),
   'laravel-lang/config' => 
