@@ -1,6 +1,6 @@
 <div class="drawer-side z-50">
     <label for="my-drawer" aria-label="close sidebar" class="drawer-overlay"></label>
-    <ul class="menu bg-base-100 text-base-content min-h-full w-80 p-4 shadow-lg">
+    <ul class="menu bg-white/70 backdrop-blur-2xl text-base-content min-h-full w-80 p-4 shadow-lg">
         @foreach ($menuItems as $key => $item)
             <li class="mb-2">
                 @if (!empty($item['children']))

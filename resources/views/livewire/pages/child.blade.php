@@ -40,13 +40,13 @@ new class extends Component {
     public function with()
     {
         return [
-            'news' => $this->childCategory->news()->paginate(66),
+            'news' => $this->childCategory->news()->latest()->paginate(66),
         ];
     }
 };
 ?>
 
-<div class="py-5">
+<div class="py-5 text-white">
     <!-- Breadcrumb Navigation -->
     <div class="breadcrumbs text-sm">
         <ul>
@@ -57,8 +57,10 @@ new class extends Component {
     </div>
 
     <!-- Page Title and Description -->
-    <h1 class="text-3xl font-bold">{{$childCategory->title }}</h1>
-    <p>{{$childCategory->description }}</p>
+    <h1 class="text-4xl font-bold text-white mb-3">{{$childCategory->title }}</h1>
+    <p class="text-lg text-white text-justify leading-relaxed">
+        {{$childCategory->description }}
+    </p>
 
     <!-- News Section -->
     <div class="mt-8">
@@ -72,7 +74,7 @@ new class extends Component {
                 <p class="text-gray-500">{{ __('news.noContent') }}</p>
             </div>
         @else
-            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-2 gap-6">
+            <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
                 @foreach ($news as $item)
                     <div>
                         <livewire:components.news-card :news="$item" />

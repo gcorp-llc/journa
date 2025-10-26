@@ -3,6 +3,7 @@
 namespace App\Filament\Resources\NewsSiteCategories\Tables;
 
 use Filament\Actions\BulkActionGroup;
+use Filament\Actions\DeleteAction;
 use Filament\Actions\DeleteBulkAction;
 use Filament\Actions\EditAction;
 use Filament\Tables\Columns\TextColumn;
@@ -14,7 +15,7 @@ class NewsSiteCategoriesTable
     {
         return $table
             ->columns([
-                TextColumn::make('news_site_id')
+                TextColumn::make('news.name')
                     ->numeric()
                     ->sortable(),
                 TextColumn::make('category.title')
@@ -38,6 +39,7 @@ class NewsSiteCategoriesTable
             ])
             ->recordActions([
                 EditAction::make(),
+                DeleteAction::make(),
             ])
             ->toolbarActions([
                 BulkActionGroup::make([

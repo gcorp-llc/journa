@@ -13,7 +13,7 @@ new class extends Component {
     {
         return [
             'newsItems' =>  News::where('status', 'published')
-                ->orderBy('published_at', 'desc')
+                ->latest()
                 ->paginate(33),
         ];
     }

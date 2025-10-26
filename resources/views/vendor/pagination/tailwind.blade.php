@@ -10,7 +10,7 @@
                     </svg>
                 </button>
             @else
-                <a href="{{ $paginator->previousPageUrl() }}" class="btn btn-sm sm:btn-md bg-amber-500 hover:bg-amber-600 text-white rounded-full p-2 sm:p-3 transition-all" aria-label="{{ __('pagination.previous') }}">
+                <a href="{{ $paginator->previousPageUrl() }}" wire:navigate class="btn btn-sm sm:btn-md bg-amber-500 hover:bg-amber-600 text-white rounded-full p-2 sm:p-3 transition-all" aria-label="{{ __('pagination.previous') }}">
                     <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7" />
                     </svg>
@@ -35,7 +35,7 @@
 
                 <!-- First Page -->
             @if ($start > 1)
-                <a href="{{ $paginator->url(1) }}" class="btn btn-sm sm:btn-md bg-amber-500 hover:bg-amber-600 text-white rounded-full px-3 sm:px-4 transition-all" aria-label="{{ __('Go to page 1') }}">1</a>
+                <a href="{{ $paginator->url(1) }}" wire:navigate class="btn btn-sm sm:btn-md bg-amber-500 hover:bg-amber-600 text-white rounded-full px-3 sm:px-4 transition-all" aria-label="{{ __('Go to page 1') }}">1</a>
                 @if ($start > 2)
                     <span class="text-gray-500 px-2">...</span>
                 @endif
@@ -46,21 +46,21 @@
                 @if ($i == $currentPage)
                     <button class="btn btn-sm sm:btn-md bg-gradient-to-r from-amber-500 to-orange-500 text-white rounded-full px-3 sm:px-4 shadow-md" aria-current="page">{{ $i }}</button>
                 @else
-                    <a href="{{ $paginator->url($i) }}" class="btn btn-sm sm:btn-md bg-amber-500 hover:bg-amber-600 text-white rounded-full px-3 sm:px-4 transition-all" aria-label="{{ __('Go to page :page', ['page' => $i]) }}">{{ $i }}</a>
+                    <a href="{{ $paginator->url($i) }}" wire:navigate class="btn btn-sm sm:btn-md bg-amber-500 hover:bg-amber-600 text-white rounded-full px-3 sm:px-4 transition-all" aria-label="{{ __('Go to page :page', ['page' => $i]) }}">{{ $i }}</a>
                 @endif
             @endfor
 
             <!-- Last Page -->
             @if ($end < $lastPage)
                 @if ($end < $lastPage - 1)
-                    <span class="text-white px-2">...</span>
+                    <span class="text-gray-500 px-2">...</span>
                 @endif
-                <a href="{{ $paginator->url($lastPage) }}" class="btn btn-sm sm:btn-md bg-amber-500 hover:bg-amber-600 text-white rounded-full px-3 sm:px-4 transition-all" aria-label="{{ __('Go to page :page', ['page' => $lastPage]) }}">{{ $lastPage }}</a>
+                <a href="{{ $paginator->url($lastPage) }}" wire:navigate class="btn btn-sm sm:btn-md bg-amber-500 hover:bg-amber-600 text-white rounded-full px-3 sm:px-4 transition-all" aria-label="{{ __('Go to page :page', ['page' => $lastPage]) }}">{{ $lastPage }}</a>
             @endif
 
             <!-- Next Page Button -->
             @if ($paginator->hasMorePages())
-                <a href="{{ $paginator->nextPageUrl() }}" class="btn btn-sm sm:btn-md bg-amber-500 hover:bg-amber-600 text-white rounded-full p-2 sm:p-3 transition-all" aria-label="{{ __('pagination.next') }}">
+                <a href="{{ $paginator->nextPageUrl() }}" wire:navigate class="btn btn-sm sm:btn-md bg-amber-500 hover:bg-amber-600 text-white rounded-full p-2 sm:p-3 transition-all" aria-label="{{ __('pagination.next') }}">
                     <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" />
                     </svg>

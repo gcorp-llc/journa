@@ -5,6 +5,7 @@ use Livewire\WithPagination;
 use Artesaos\SEOTools\Facades\SEOMeta;
 use Artesaos\SEOTools\Facades\OpenGraph;
 use App\Models\Category;
+use App\Models\News; // Assuming your News model is in this namespace
 use Illuminate\Support\Facades\Log;
 
 new class extends Component {
@@ -31,10 +32,26 @@ new class extends Component {
         SEOMeta::addMeta('twitter:description', $this->category->description);
     }
 
+    protected function getDescendantCategoryIds($categoryId)
+    {
+        $ids = [$categoryId];
+        $children = Category::where('parent_id', $categoryId)->get();
+
+        foreach ($children as $child) {
+            $ids = array_merge($ids, $this->getDescendantCategoryIds($child->id));
+        }
+
+        return $ids;
+    }
+
     public function with()
     {
+        $categoryIds = $this->getDescendantCategoryIds($this->category->id);
+
         return [
-            'news' => $this->category->news()->paginate(77),
+            'news' => News::whereHas('categories', function($query) use ($categoryIds) {
+                $query->whereIn('categories.id', $categoryIds);
+            })->latest()->paginate(77),
         ];
     }
 };
@@ -45,9 +62,9 @@ new class extends Component {
     <nav class="breadcrumbs text-sm mb-6">
         <ul class="flex items-center space-x-2 space-x-reverse">
             <li>
-                <a href="/" class="text-blue-600 hover:underline">{{ __('menu.home.title') }}</a>
+                <a href="/" class="text-white hover:underline">{{ __('menu.home.title') }}</a>
             </li>
-            <li class="text-gray-600 font-medium">
+            <li class="text-white font-medium">
                 {{ $category->title }}
             </li>
         </ul>
@@ -55,15 +72,15 @@ new class extends Component {
 
     <!-- Page Title and Description -->
     <div class="mb-8">
-        <h1 class="text-4xl font-bold text-gray-800 mb-3 flex">
+        <h1 class="text-4xl font-bold text-white mb-3 flex">
             @if($category->icon)
-                <x-icon :name="$category->icon" class="w-6 h-6 md:w-9 md:h-9 me-2" />
+                <x-icon :name="$category->icon" class="w-9 h-9 me-2" />
             @endif
             {{ $category->title }}
 
         </h1>
-        <p class="text-lg text-gray-600 leading-relaxed">
-           {{$category->description}}
+        <p class="text-lg text-white text-justify leading-relaxed">
+            {{$category->description}}
         </p>
     </div>
 
@@ -92,4 +109,3 @@ new class extends Component {
         @endif
     </div>
 </div>
-
