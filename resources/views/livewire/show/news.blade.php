@@ -8,7 +8,11 @@ use Morilog\Jalali\Jalalian;
 use DateTime;
 
 layout('components.layouts.app');
-state(['news' => null, 'isLoading' => true]);
+state(['news' => null, 'isLoading' => true,'lastnews'=>
+    fn () => \App\Models\News::latest()
+    ->inRandomOrder()
+    ->take(15)
+    ->get()  ]);
 
 // Helper function for locale-specific date formatting
 function formatDateByLocale($date, $locale)
@@ -30,6 +34,7 @@ mount(function ($slug) {
 
     // Fetch news first
     $news = \App\Models\News::firstWhere('slug', $slug);
+    // ✅ Fetch 10 random latest news, excluding current one
 
     if (!$news) {
         abort(404, 'News not found');
@@ -42,18 +47,18 @@ mount(function ($slug) {
     $this->isLoading = false;
 
     // Extract description once to avoid repetition
-    $description = Str::limit(strip_tags($news->description), 170, '...');
-
+    $description = Str::limit(strip_tags($news->content), 150, '...');
+    $title=Str::limit(strip_tags($news->title), 50, '...');
     // Set SEO metadata
-    SEOMeta::setTitle($news->title);
+    SEOMeta::setTitle($title);
     SEOMeta::setDescription($description);
     SEOMeta::setCanonical(request()->url());
     SEOMeta::addMeta('twitter:card', 'summary_large_image');
-    SEOMeta::addMeta('twitter:title', $news->title);
+    SEOMeta::addMeta('twitter:title', $title);
     SEOMeta::addMeta('twitter:description', $description);
 
     // Set Open Graph metadata
-    OpenGraph::setTitle($news->title);
+    OpenGraph::setTitle($title);
     OpenGraph::setDescription($description);
     OpenGraph::setUrl(request()->url());
     OpenGraph::addProperty('type', 'webpage');
@@ -148,4 +153,28 @@ mount(function ($slug) {
             @endif
         </div>
     </article>
+
+    @if($lastnews && $lastnews->count())
+        <section class="container mx-auto px-4 py-12">
+            <h2 class="text-3xl font-bold">{{ __('menu.home.title') }}</h2>
+            <p>{{ __('menu.home.description') }}</p>
+            <div class="w-full">
+                <div class="carousel carousel-center rounded-2xl w-full my-3 space-x-4 p-4 bg-gradient-to-r from-slate-900 to-sky-950">
+                    @forelse($lastnews as $item)
+                        <div class="carousel-item snap-center w-80 flex-shrink-0">
+                                <livewire:components.news-card :news="$item" />
+                        </div>
+                    @empty
+                        <div class="w-full flex items-center justify-center h-40 text-gray-500">
+                            <span>{{ __('messages.no_ads') }}</span>
+                        </div>
+                    @endforelse
+                </div>
+            </div>
+
+
+
+        </section>
+    @endif
+
 </div>
