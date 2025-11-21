@@ -42,25 +42,17 @@ return [
         ],
         'Associated Press' => [
             'category_selectors' => [
-                'links' => '.Link',
-                'filter' => 'article'
+                'links' => 'a[href*="/article/"]',
+                'filter' => ''
             ],
             'news_selectors' => [
-                'title' => 'h1.Page-headline',
-                'content' => '.RichTextStoryBody',
-                'cover' => '.CarouselSlide-media picture source[media*="min-width: 1024px"][type="image/webp"], .CarouselSlide-media img.Image',
-                'cover_carousel' => '.CarouselSlide-media:first-child picture source[media*="min-width: 1024px"][type="image/webp"], .CarouselSlide-media:first-child img.Image',
-                'cover_alt' => 'meta[property="og:image"]',
+                'title' => 'h1', // فال‌بک برای وقتی که JSON-LD کار نکند
+                'content' => '.RichTextStoryBody, .StoryBody, main article',
+                'cover' => 'meta[property="og:image"]',
+                'cover_carousel' => 'figure img',
+                'cover_alt' => 'meta[property="twitter:image"]',
                 'unwanted_content_selectors' => [
-                    '.inline-content',
-                    '.ad',
-                    '.advertisement',
-                    '.Component-richTextAd-0',
-                    '.Component-video-0',
-                    '.Component-image-0',
-                    '.Component-caption-0',
-                    '.PageListEnhancementGeneric',
-                    '.Advertisement'
+                    '.ad', '.Enhancement', '.RelatedList', 'aside', 'script', '.AP-catchup-module'
                 ],
             ],
             'rate_limit' => 3,

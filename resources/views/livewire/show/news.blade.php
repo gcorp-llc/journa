@@ -5,26 +5,27 @@ use Illuminate\Support\Facades\{DB, Storage};
 use Illuminate\Support\Str;
 use Artesaos\SEOTools\Facades\{SEOMeta, OpenGraph};
 use Morilog\Jalali\Jalalian;
-use DateTime;
+// خط زیر حذف شد: use DateTime;
 
 layout('components.layouts.app');
 state(['news' => null, 'isLoading' => true,'lastnews'=>
     fn () => \App\Models\News::latest()
-    ->inRandomOrder()
-    ->take(15)
-    ->get()  ]);
+        ->take(15)
+        ->get()  ]);
 
 // Helper function for locale-specific date formatting
 function formatDateByLocale($date, $locale)
 {
     return match ($locale) {
         'fa' => Jalalian::fromDateTime($date)->format('Y/m/d'),
+        // کلاس DateTime همچنان در اینجا قابل استفاده است
         'ar' => (new DateTime($date))->format('Y/m/d'),
         default => $date->format('Y/m/d'),
     };
 }
 
 mount(function ($slug) {
+    // بقیه کد بدون تغییر
     $locale = request()->query('locale', 'fa');
     $allowedLocales = ['en', 'fa', 'ar'];
 
@@ -67,7 +68,6 @@ mount(function ($slug) {
         OpenGraph::addImage(Storage::url($news->cover));
     }
 });
-
 ?>
 
 <div class="relative min-h-screen rounded-2xl bg-white/50 backdrop-blur-md my-4 sm:my-8">

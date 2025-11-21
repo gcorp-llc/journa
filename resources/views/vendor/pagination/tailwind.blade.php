@@ -1,76 +1,65 @@
 @if ($paginator->hasPages())
+    <nav role="navigation" aria-label="{{ __('Pagination Navigation') }}" class="flex items-center justify-center py-8">
+        <div class="flex flex-wrap items-center justify-center gap-2 p-2 bg-white/5 backdrop-blur-sm rounded-full shadow-sm border border-white/10">
 
-    <nav role="navigation" aria-label="{{ __('Pagination Navigation') }}" class="flex items-center justify-center py-4">
-        <div class="flex items-center gap-2">
-            <!-- Previous Page Button -->
+            {{-- دکمه قبلی --}}
             @if ($paginator->onFirstPage())
-                <button class="btn btn-sm sm:btn-md bg-amber-500 text-white cursor-not-allowed rounded-full p-2 sm:p-3 transition-all" disabled aria-label="{{ __('pagination.previous') }}">
-                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <span class="flex items-center justify-center w-10 h-10 rounded-full bg-white/10 text-white/30 cursor-not-allowed">
+                    <svg class="w-5 h-5 rtl:rotate-180" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7" />
                     </svg>
-                </button>
+                </span>
             @else
-                <a href="{{ $paginator->previousPageUrl() }}" wire:navigate class="btn btn-sm sm:btn-md bg-amber-500 hover:bg-amber-600 text-white rounded-full p-2 sm:p-3 transition-all" aria-label="{{ __('pagination.previous') }}">
-                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <a href="{{ $paginator->previousPageUrl() }}" wire:navigate class="flex items-center justify-center w-10 h-10 rounded-full bg-amber-500 text-white hover:bg-amber-600 transition-all duration-200 shadow-md hover:shadow-amber-500/30" aria-label="{{ __('pagination.previous') }}">
+                    <svg class="w-5 h-5 rtl:rotate-180" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7" />
                     </svg>
                 </a>
             @endif
 
-            <!-- Pagination Elements -->
-            @php
-                $currentPage = $paginator->currentPage();
-                $lastPage = $paginator->lastPage();
-                $isMobile = request()->isMobile() ?? false; // فرض می‌کنیم متد isMobile وجود دارد
-                $maxPages = $isMobile ? 3 : 7; // 3 صفحه برای موبایل، 7 برای دسکتاپ
-                $halfMax = floor($maxPages / 2);
-                $start = max(1, $currentPage - $halfMax);
-                $end = min($lastPage, $currentPage + $halfMax);
+            {{-- المان‌های صفحه‌بندی --}}
+            <div class="hidden sm:flex gap-2">
+                @foreach ($elements as $element)
+                    {{-- جداکننده سه نقطه --}}
+                    @if (is_string($element))
+                        <span class="flex items-center justify-center w-10 h-10 text-gray-400 font-medium">{{ $element }}</span>
+                    @endif
 
-                // تنظیم برای حداقل تعداد صفحات
-                if ($end - $start < $maxPages - 1 && $lastPage > $maxPages) {
-                    $start = max(1, $end - ($maxPages - 1));
-                }
-            @endphp
+                    {{-- آرایه لینک‌ها --}}
+                    @if (is_array($element))
+                        @foreach ($element as $page => $url)
+                            @if ($page == $paginator->currentPage())
+                                <span class="flex items-center justify-center w-10 h-10 rounded-full bg-gradient-to-br from-amber-500 to-orange-600 text-white font-bold shadow-lg scale-110 cursor-default ring-2 ring-white/20" aria-current="page">
+                                    {{ $page }}
+                                </span>
+                            @else
+                                <a href="{{ $url }}" wire:navigate class="flex items-center justify-center w-10 h-10 rounded-full bg-white/10 text-white hover:bg-amber-500 hover:text-white transition-all duration-200 font-medium" aria-label="{{ __('Go to page :page', ['page' => $page]) }}">
+                                    {{ $page }}
+                                </a>
+                            @endif
+                        @endforeach
+                    @endif
+                @endforeach
+            </div>
 
-                <!-- First Page -->
-            @if ($start > 1)
-                <a href="{{ $paginator->url(1) }}" wire:navigate class="btn btn-sm sm:btn-md bg-amber-500 hover:bg-amber-600 text-white rounded-full px-3 sm:px-4 transition-all" aria-label="{{ __('Go to page 1') }}">1</a>
-                @if ($start > 2)
-                    <span class="text-gray-500 px-2">...</span>
-                @endif
-            @endif
+            {{-- حالت موبایل: نمایش ساده‌تر --}}
+            <div class="sm:hidden flex items-center text-white text-sm font-medium px-2">
+                صفحه {{ $paginator->currentPage() }} از {{ $paginator->lastPage() }}
+            </div>
 
-            <!-- Page Numbers -->
-            @for ($i = $start; $i <= $end; $i++)
-                @if ($i == $currentPage)
-                    <button class="btn btn-sm sm:btn-md bg-gradient-to-r from-amber-500 to-orange-500 text-white rounded-full px-3 sm:px-4 shadow-md" aria-current="page">{{ $i }}</button>
-                @else
-                    <a href="{{ $paginator->url($i) }}" wire:navigate class="btn btn-sm sm:btn-md bg-amber-500 hover:bg-amber-600 text-white rounded-full px-3 sm:px-4 transition-all" aria-label="{{ __('Go to page :page', ['page' => $i]) }}">{{ $i }}</a>
-                @endif
-            @endfor
-
-            <!-- Last Page -->
-            @if ($end < $lastPage)
-                @if ($end < $lastPage - 1)
-                    <span class="text-gray-500 px-2">...</span>
-                @endif
-                <a href="{{ $paginator->url($lastPage) }}" wire:navigate class="btn btn-sm sm:btn-md bg-amber-500 hover:bg-amber-600 text-white rounded-full px-3 sm:px-4 transition-all" aria-label="{{ __('Go to page :page', ['page' => $lastPage]) }}">{{ $lastPage }}</a>
-            @endif
-
-            <!-- Next Page Button -->
+            {{-- دکمه بعدی --}}
             @if ($paginator->hasMorePages())
-                <a href="{{ $paginator->nextPageUrl() }}" wire:navigate class="btn btn-sm sm:btn-md bg-amber-500 hover:bg-amber-600 text-white rounded-full p-2 sm:p-3 transition-all" aria-label="{{ __('pagination.next') }}">
-                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <a href="{{ $paginator->nextPageUrl() }}" wire:navigate class="flex items-center justify-center w-10 h-10 rounded-full bg-amber-500 text-white hover:bg-amber-600 transition-all duration-200 shadow-md hover:shadow-amber-500/30" aria-label="{{ __('pagination.next') }}">
+                    <svg class="w-5 h-5 rtl:rotate-180" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" />
                     </svg>
                 </a>
             @else
-                <button class="btn btn-sm sm:btn-md bg-gray-200 text-gray-500 cursor-not-allowed rounded-full p-2 sm:p-3 transition-all" disabled aria-label="{{ __('pagination.next') }}">
-                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <span class="flex items-center justify-center w-10 h-10 rounded-full bg-white/10 text-white/30 cursor-not-allowed">
+                    <svg class="w-5 h-5 rtl:rotate-180" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" />
                     </svg>
-                </button>
+                </span>
             @endif
         </div>
     </nav>

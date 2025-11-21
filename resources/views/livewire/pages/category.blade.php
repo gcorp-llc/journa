@@ -5,7 +5,7 @@ use Livewire\WithPagination;
 use Artesaos\SEOTools\Facades\SEOMeta;
 use Artesaos\SEOTools\Facades\OpenGraph;
 use App\Models\Category;
-use App\Models\News; // Assuming your News model is in this namespace
+use App\Models\News;
 use Illuminate\Support\Facades\Log;
 
 new class extends Component {
@@ -15,9 +15,8 @@ new class extends Component {
 
     public function mount($slug)
     {
-        // Find the category
         $this->category = Category::where('slug', $slug)->firstOrFail();
-        // Set SEO metadata
+
         SEOMeta::setTitle($this->category->title);
         SEOMeta::setDescription($this->category->description);
         SEOMeta::setCanonical(request()->url());
@@ -51,7 +50,10 @@ new class extends Component {
         return [
             'news' => News::whereHas('categories', function($query) use ($categoryIds) {
                 $query->whereIn('categories.id', $categoryIds);
-            })->latest()->paginate(77),
+            })
+
+                ->orderBy('id', 'desc')
+                ->paginate(177), // تعداد آیتم‌های درخواستی
         ];
     }
 };
@@ -77,7 +79,6 @@ new class extends Component {
                 <x-icon :name="$category->icon" class="w-9 h-9 me-2" />
             @endif
             {{ $category->title }}
-
         </h1>
         <p class="text-lg text-white text-justify leading-relaxed">
             {{$category->description}}
@@ -98,12 +99,12 @@ new class extends Component {
         @else
             <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
                 @foreach ($news as $item)
-                    <div class="">
-                        <livewire:components.news-card :news="$item" />
+                    <div>
+                        <livewire:components.news-card :news="$item" wire:key="cat-news-{{ $item->id }}" />
                     </div>
                 @endforeach
             </div>
-            <div class="mt-12">
+            <div class="md:py-10 py-4" dir="ltr">
                 {{ $news->links() }}
             </div>
         @endif

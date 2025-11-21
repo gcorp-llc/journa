@@ -14,15 +14,12 @@ new class extends Component {
 
     public function mount($category_slug, $child_slug)
     {
-        // Main category
         $this->category = Category::where('slug', $category_slug)->firstOrFail();
 
-        // Child category
         $this->childCategory = Category::where('slug', $child_slug)
             ->where('parent_id', $this->category->id)
             ->firstOrFail();
 
-        // SEO metadata
         SEOMeta::setTitle($this->childCategory->title);
         SEOMeta::setDescription($this->childCategory->description);
         SEOMeta::setCanonical(request()->url());
@@ -40,7 +37,9 @@ new class extends Component {
     public function with()
     {
         return [
-            'news' => $this->childCategory->news()->latest()->paginate(66),
+            'news' => $this->childCategory->news()
+                ->orderBy('id', 'desc')
+                ->paginate(177),
         ];
     }
 };
@@ -77,11 +76,11 @@ new class extends Component {
             <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
                 @foreach ($news as $item)
                     <div>
-                        <livewire:components.news-card :news="$item" />
+                        <livewire:components.news-card :news="$item" wire:key="child-news-{{ $item->id }}" />
                     </div>
                 @endforeach
             </div>
-            <div class="py-10">
+            <div class="md:py-10 py-4" dir="ltr">
                 {{ $news->links() }}
             </div>
         @endif
