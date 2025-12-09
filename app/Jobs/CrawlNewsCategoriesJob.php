@@ -2,7 +2,7 @@
 
 namespace App\Jobs;
 
-use App\Traits\InteractsWithHttp; // ✅ استفاده از Trait
+use App\Traits\InteractsWithHttp;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Queue\Queueable;
 use Illuminate\Support\Facades\DB;
@@ -24,47 +24,58 @@ class CrawlNewsCategoriesJob implements ShouldQueue
         $this->siteId = $siteId;
         $this->categoryId = $categoryId;
         $this->url = $url;
-        $this->jobId = uniqid('crawl_cat_', true);
+        $this->jobId = uniqid('crawl_list_', true);
     }
 
     public function handle()
     {
         try {
-            // دریافت نام سایت
             $site = DB::table('news_sites')->find($this->siteId);
-            if (!$site) throw new \Exception("سایت یافت نشد");
+            if (!$site) {
+                Log::error("❌ سایت یافت نشد: {$this->siteId}");
+                return;
+            }
 
             $siteName = json_decode($site->name)->en ?? 'Unknown';
             $config = config('crawler.sites.' . $siteName);
 
             if (!$config) throw new \Exception("کانفیگ یافت نشد برای: $siteName");
 
-            Log::info("🔍 [شروع خزش دسته]", ['url' => $this->url, 'site' => $siteName]);
+            Log::info("🔍 [خزش لیست خبرها]", ['url' => $this->url, 'category_id' => $this->categoryId]);
 
-            // دریافت صفحه با Trait
             $response = $this->sendRequest($this->url, 'get', ['job_id' => $this->jobId]);
             $html = $response->body();
 
             $crawler = new Crawler($html);
-
-            // استخراج لینک‌ها
             $links = $crawler->filter($config['category_selectors']['links'])->each(function (Crawler $node) {
                 return $this->normalizeUrl($node->attr('href'));
             });
 
-            // حذف تکراری‌ها و خالی‌ها
-            $links = array_unique(array_filter($links));
+            // حذف لینک‌های نامعتبر و تکراری
+            $links = array_unique(array_filter($links, function($link) {
+                return !empty($link) && filter_var($link, FILTER_VALIDATE_URL);
+            }));
 
-            // بررسی لینک‌های قبلاً کرول شده
-            $existing = DB::table('news')->whereIn('source_url', $links)->pluck('source_url')->toArray();
-            $newLinks = array_diff($links, $existing);
+            if (empty($links)) {
+                Log::warning("⚠️ هیچ لینکی یافت نشد", ['url' => $this->url]);
+                return;
+            }
+
+            // بهینه‌سازی: بررسی یکباره تمام لینک‌ها در دیتابیس
+            $existingUrls = DB::table('news')
+                ->whereIn('source_url', $links)
+                ->pluck('source_url')
+                ->toArray();
+
+            $newLinks = array_diff($links, $existingUrls);
 
             foreach ($newLinks as $link) {
-                // فیلتر اضافی (اگر در کانفیگ باشد)
+                // فیلتر اضافی بر اساس کانفیگ
                 if (!empty($config['category_selectors']['filter'])) {
                     if (!str_contains($link, $config['category_selectors']['filter'])) continue;
                 }
 
+                // ارسال کانفیگ کامل به جاب بعدی
                 CrawlNewsContentJob::dispatch(
                     $siteName,
                     $this->siteId,
@@ -74,10 +85,10 @@ class CrawlNewsCategoriesJob implements ShouldQueue
                 );
             }
 
-            Log::info("✅ [پایان خزش دسته]", ['کل لینک‌ها' => count($links), 'جدید' => count($newLinks)]);
+            Log::info("✅ [نتیجه لیست]", ['total' => count($links), 'new' => count($newLinks)]);
 
         } catch (\Exception $e) {
-            Log::error("❌ [خطا دسته بندی]", ['url' => $this->url, 'msg' => $e->getMessage()]);
+            Log::error("❌ [خطا در خزش لیست]", ['url' => $this->url, 'msg' => $e->getMessage()]);
             $this->release(self::RETRY_DELAY);
         }
     }
@@ -85,10 +96,18 @@ class CrawlNewsCategoriesJob implements ShouldQueue
     private function normalizeUrl(?string $link): string
     {
         if (empty($link)) return '';
+        $link = trim($link);
+
         if (str_starts_with($link, 'http')) return $link;
 
+        // مدیریت لینک‌های نسبی
         $parsed = parse_url($this->url);
         $root = $parsed['scheme'] . '://' . $parsed['host'];
-        return $root . '/' . ltrim($link, '/');
+
+        if (str_starts_with($link, '/')) {
+            return $root . $link;
+        }
+
+        return $root . '/' . $link;
     }
 }
