@@ -32,7 +32,7 @@ class CrawlCategoryLinksJob implements ShouldQueue
 
             // ساخت کوئری پایه
             $query = DB::table('news_site_categories')
-                ->where('is_active', true) // فرض بر این است که فیلد فعال/غیرفعال دارید
+//                ->where('is_active', true) // فرض بر این است که فیلد فعال/غیرفعال دارید
                 ->where(function ($query) {
                     $query->where('last_crawled', '<', now()->subHours(1))
                         ->orWhereNull('last_crawled');

@@ -15,173 +15,357 @@ class CrawlNewsContentJob implements ShouldQueue
 {
     use Queueable, InteractsWithHttp;
 
-    private const RETRY_DELAY = 60;
     private const MAX_RETRIES = 3;
-
-    private string $siteName;
-    private int $siteId;
-    private int $parentCategoryId; // تغییر نام برای وضوح بیشتر
-    private string $url;
-    private array $config;
-    private string $jobId;
+    private const RETRY_DELAYS = [30, 60, 120]; // ثانیه
 
     public $tries = self::MAX_RETRIES;
+    public $backoff = self::RETRY_DELAYS;
 
-    public function __construct(string $siteName, int $siteId, int $categoryId, string $url, array $newsSelectors = [])
-    {
-        $this->siteName = $siteName;
-        $this->siteId = $siteId;
-        $this->parentCategoryId = $categoryId;
-        $this->url = $url;
-        $this->config = ['news_selectors' => $newsSelectors];
-        $this->jobId = uniqid('content_', true);
-    }
+    public function __construct(
+        private readonly string $siteName,
+        private readonly int $siteId,
+        private readonly int $parentCategoryId,
+        private readonly string $url,
+        private readonly array $newsSelectors = [],
+    ) {}
 
-    public function handle(TranslationService $translationService)
+    public function handle(TranslationService $translationService): void
     {
+        $jobId = uniqid('content_', true);
+
         try {
-            if (empty($this->config['news_selectors'])) {
-                $this->loadConfig();
-            }
+            Log::info('🔍 شروع پردازش محتوای خبر', [
+                'url' => $this->url,
+                'site_id' => $this->siteId,
+                'job_id' => $jobId,
+            ]);
 
-            $response = $this->sendRequest($this->url, 'get', ['job_id' => $this->jobId]);
+            $response = $this->sendRequest($this->url, 'get', ['job_id' => $jobId]);
             $html = $response->body();
 
-            if (strlen($html) < 500) throw new \Exception("HTML ناقص یا خالی");
+            if (strlen($html) < 500) {
+                throw new \Exception('صفحه خالی یا ناقص دریافت شد');
+            }
 
             $crawler = new Crawler($html);
             $jsonLd = $this->extractJsonLdData($crawler);
 
-            // 1. استخراج عنوان
-            $title = $jsonLd['headline'] ?? $this->extractBySelector($crawler, 'title');
-            if (!$title) {
-                $title = $crawler->filter('title')->count() ? $crawler->filter('title')->text() : null;
+            // استخراج عنوان
+            $title = $jsonLd['headline']
+                ?? $this->extractBySelector($crawler, 'title')
+                ?? ($crawler->filter('title')->count() ? trim($crawler->filter('title')->text()) : null);
+
+            if (empty($title)) {
+                throw new \Exception('عنوان خبر یافت نشد');
             }
 
-            if (empty($title)) throw new \Exception("عنوان یافت نشد");
+            // استخراج و تمیزسازی محتوا
+            $rawContent = $this->extractRawContent($crawler);
+            $cleanedContent = $this->cleanHtmlContent($rawContent);
 
-            // 2. استخراج محتوا
-            $content = $this->extractContent($crawler);
-            if (empty($content) && !empty($jsonLd['description'])) {
-                $content = "<p>" . $jsonLd['description'] . "</p>";
+            if (empty($cleanedContent) && !empty($jsonLd['description'])) {
+                $cleanedContent = '<p>' . $jsonLd['description'] . '</p>';
             }
 
-            if (empty($content) || strlen(strip_tags($content)) < 50) {
-                throw new \Exception("محتوا کوتاه است");
+            if (empty($cleanedContent) || strlen(strip_tags($cleanedContent)) < 80) {
+                throw new \Exception('محتوای خبر کوتاه یا نامعتبر است');
             }
 
-            // 3. ترجمه و ذخیره خبر
+            // ترجمه
             $translations = $translationService->translateArray(
-                ['title' => $title, 'content' => $content],
+                ['title' => $title, 'content' => $cleanedContent],
                 ['title', 'content']
             );
 
-            // 4. ذخیره خبر در دیتابیس
-            $newsId = $this->saveNews($translations, $jsonLd['image'] ?? null);
+            // ذخیره خبر
+            $newsId = $this->saveNews($translations);
 
-            // 5. مدیریت پیشرفته دسته‌بندی‌ها (بخش اصلاح شده)
+            // پردازش دسته‌بندی‌ها
             $this->processCategories($newsId, $crawler);
 
-            // 6. پردازش تصویر
-            $this->dispatchImageJob($newsId, $html, $jsonLd['image'] ?? null, $translations['title']['en'] ?? 'news');
+            // استخراج لینک تصویر کاور
+            $coverImageUrl = $this->extractCoverImageUrl($crawler, $jsonLd['image'] ?? null);
+            $slugForImage = $translations['title']['en'] ?? Str::slug(Str::limit($title, 50));
 
-            Log::info("✅ [خبر ذخیره شد]", ['id' => $newsId, 'title' => Str::limit($title, 30)]);
+            if ($coverImageUrl) {
+                ProcessNewsImageJob::dispatch($newsId, $this->siteName, $coverImageUrl, $slugForImage)
+                    ->onQueue('images');
+            } else {
+                Log::warning('⚠️ تصویر کاور یافت نشد', ['news_id' => $newsId, 'url' => $this->url]);
+            }
+
+            Log::info('✅ خبر با موفقیت پردازش و ذخیره شد', [
+                'news_id' => $newsId,
+                'title' => Str::limit($title, 50),
+            ]);
 
         } catch (\Exception $e) {
-            Log::error("❌ [خطای محتوا]", ['url' => $this->url, 'msg' => $e->getMessage()]);
-            $this->release(self::RETRY_DELAY);
+            Log::error('❌ خطا در پردازش محتوای خبر', [
+                'url' => $this->url,
+                'message' => $e->getMessage(),
+                'line' => $e->getLine(),
+                'job_id' => $jobId,
+            ]);
+
+            $this->fail($e);
         }
     }
 
     /**
-     * بخش جدید برای مدیریت دقیق‌تر دسته‌بندی‌ها
+     * استخراج هوشمند و دقیق تصویر کاور با پشتیبانی بهتر از srcset
      */
-    private function processCategories(int $newsId, Crawler $crawler): void
+    private function extractCoverImageUrl(Crawler $crawler, mixed $jsonLdImage): ?string
     {
-        $categoryIds = [$this->parentCategoryId]; // همیشه دسته‌بندی مادر را نگه دار
-
-        // تلاش برای پیدا کردن دسته‌بندی از داخل صفحه (مثلاً Breadcrumb)
-        // فرض بر این است که در کانفیگ سلکتوری به نام 'category' یا 'breadcrumb' دارید
-        $categorySelector = $this->config['news_selectors']['category'] ?? $this->config['news_selectors']['breadcrumb'] ?? null;
-
-        if ($categorySelector) {
-            try {
-                $detectedCategoryName = $crawler->filter($categorySelector)->count() > 0
-                    ? trim($crawler->filter($categorySelector)->last()->text())
-                    : null;
-
-                if ($detectedCategoryName) {
-                    // جستجو در دیتابیس برای پیدا کردن ID این دسته‌بندی
-                    $detectedId = DB::table('news_site_categories')
-                        ->where('news_site_id', $this->siteId)
-                        ->where(function($q) use ($detectedCategoryName) {
-                            $q->where('title', 'LIKE', "%{$detectedCategoryName}%") // نام فارسی یا اصلی
-                            ->orWhere('url', 'LIKE', "%" . Str::slug($detectedCategoryName) . "%");
-                        })
-                        ->value('id'); // فرض بر این است که ستون id داریم (نه category_id)
-
-                    if ($detectedId) {
-                        $categoryIds[] = $detectedId;
-                        Log::info("🏷️ [دسته‌بندی هوشمند یافت شد]", ['name' => $detectedCategoryName, 'id' => $detectedId]);
-                    }
-                }
-            } catch (\Exception $e) {
-                Log::warning("⚠️ خطا در استخراج دسته‌بندی هوشمند: " . $e->getMessage());
+        // ۱. اولویت اول: JSON-LD (اگر آرایه بود، اولین عنصر را بردار)
+        if (!empty($jsonLdImage)) {
+            $imgUrl = is_array($jsonLdImage) ? ($jsonLdImage['url'] ?? $jsonLdImage[0] ?? null) : $jsonLdImage;
+            if ($imgUrl && is_string($imgUrl) && filter_var($imgUrl, FILTER_VALIDATE_URL)) {
+                return $this->normalizeUrl($imgUrl);
             }
         }
 
-        // حذف تکراری‌ها و ذخیره
-        $categoryIds = array_unique($categoryIds);
+        // ۲. متاتگ‌های استاندارد
+        $metaSelectors = [
+            'meta[property="og:image"]' => 'content',
+            'meta[name="twitter:image"]' => 'content',
+            'meta[property="twitter:image"]' => 'content',
+            'link[rel="image_src"]' => 'href',
+        ];
 
-        foreach ($categoryIds as $catId) {
-            DB::table('category_news')->insertOrIgnore([
-                'news_id' => $newsId,
-                'category_id' => $catId,
-                'created_at' => now(),
-                'updated_at' => now()
-            ]);
+        // اضافه کردن سلکتور خاص سایت از کانفیگ
+        if (!empty($this->newsSelectors['cover_alt'])) {
+            $key = $this->newsSelectors['cover_alt'];
+            $attr = (str_contains($key, 'meta') || str_contains($key, 'og:')) ? 'content' : 'src';
+            $metaSelectors[$key] = $attr;
         }
+
+        foreach ($metaSelectors as $selector => $attr) {
+            try {
+                if ($crawler->filter($selector)->count() > 0) {
+                    $url = $crawler->filter($selector)->attr($attr);
+                    if ($url) return $this->normalizeUrl($url);
+                }
+            } catch (\Exception) { continue; }
+        }
+
+        // ۳. جستجو در بدنه (CSS Selectors) با پشتیبانی از srcset
+        $cssKeys = ['cover', 'cover_carousel', 'featured_image', 'main_image'];
+        foreach ($cssKeys as $key) {
+            if (empty($this->newsSelectors[$key])) continue;
+
+            try {
+                $nodes = $crawler->filter($this->newsSelectors[$key]);
+                if ($nodes->count() === 0) continue;
+
+                $node = $nodes->first(); // اولین مورد پیدا شده
+
+                // بررسی برای srcset (معمولاً تصاویر با کیفیت اینجا هستند)
+                $srcset = $node->attr('srcset') ?? $node->attr('data-srcset');
+                if ($srcset) {
+                    $bestImage = $this->parseSrcset($srcset);
+                    if ($bestImage) return $this->normalizeUrl($bestImage);
+                }
+
+                // بررسی ویژگی‌های مختلف سورس
+                $src = $node->attr('src')
+                    ?? $node->attr('data-src')
+                    ?? $node->attr('data-original')
+                    ?? $node->attr('data-lazy-src');
+
+                if ($src) return $this->normalizeUrl($src);
+
+            } catch (\Exception) { continue; }
+        }
+
+        return null;
     }
 
-    private function extractContent(Crawler $crawler): string
+    /**
+     * پارس کردن srcset برای پیدا کردن بزرگترین تصویر
+     */
+    private function parseSrcset(string $srcset): ?string
     {
-        $selectors = $this->config['news_selectors'];
+        $candidates = explode(',', $srcset);
+        $bestUrl = null;
+        $maxWidth = 0;
 
-        // حذف عناصر مزاحم
-        $unwanted = array_merge(
-            ['script', 'style', 'iframe', 'nav', 'footer', '.ad', '.social-share'],
-            $selectors['unwanted_content_selectors'] ?? []
-        );
+        foreach ($candidates as $candidate) {
+            $parts = preg_split('/\s+/', trim($candidate), -1, PREG_SPLIT_NO_EMPTY);
+            if (count($parts) === 0) continue;
 
-        foreach ($unwanted as $sel) {
-            $crawler->filter($sel)->each(fn(Crawler $node) =>
-            $node->getNode(0)->parentNode->removeChild($node->getNode(0))
-            );
+            $url = $parts[0];
+            $width = 0;
+
+            if (isset($parts[1]) && str_ends_with($parts[1], 'w')) {
+                $width = (int) rtrim($parts[1], 'w');
+            }
+
+            if ($width > $maxWidth) {
+                $maxWidth = $width;
+                $bestUrl = $url;
+            }
         }
 
+        // اگر هیچ عرضی مشخص نشده بود، اولین مورد را برگردان
+        return $bestUrl ?? explode(' ', trim($candidates[0]))[0];
+    }
+
+    private function normalizeUrl(string $link): string
+    {
+        $link = trim($link);
+        if (str_starts_with($link, 'http')) {
+            return $link;
+        }
+
+        $parsed = parse_url($this->url);
+        $base = $parsed['scheme'] . '://' . $parsed['host'];
+
+        return str_starts_with($link, '/') ? $base . $link : $base . '/' . $link;
+    }
+
+    /**
+     * استخراج HTML خام قبل از تمیزکاری
+     */
+    private function extractRawContent(Crawler $crawler): string
+    {
+        // حذف نویزهای اولیه بر اساس سلکتورهای کانفیگ
+        $unwanted = array_merge([
+            'script', 'style', 'iframe', 'nav', 'header', 'footer', 'form',
+            '.ads', '.advertisement', '.social-share', '.related-posts',
+            '[class*="share-"]', '[class*="social-"]', '[id*="ad-"]'
+        ], $this->newsSelectors['unwanted_content_selectors'] ?? []);
+
+        foreach ($unwanted as $selector) {
+            try {
+                $crawler->filter($selector)->each(fn($node) =>
+                $node->getNode(0)->parentNode ? $node->getNode(0)->parentNode->removeChild($node->getNode(0)) : null
+                );
+            } catch (\Exception) {
+                // نادیده گرفتن خطاهای DOM
+            }
+        }
+
+        $contentSelector = $this->newsSelectors['content'] ?? 'article';
         $html = '';
-        $crawler->filter($selectors['content'])->each(function (Crawler $node) use (&$html) {
-            $html .= $this->cleanHtml($node->outerHtml());
-        });
 
-        return $html;
+        try {
+            $crawler->filter($contentSelector)->each(function (Crawler $node) use (&$html) {
+                // استفاده از innerHtml برای جلوگیری از تکرار تگ والد اگر نیازی نیست،
+                // اما outerHtml امن‌تر است برای حفظ ساختار
+                $html .= '<div>' . $node->outerHtml() . '</div>';
+            });
+        } catch (\Exception) {
+            // فال‌بک
+        }
+
+        return $html ?: '';
     }
 
-    private function cleanHtml(string $html): string
+    /**
+     * تمیزکاری پیشرفته HTML با DOMDocument
+     * حذف کلاس‌ها، استایل‌ها و لینک‌های مزاحم
+     */
+    private function cleanHtmlContent(string $html): string
     {
-        // حذف تمام اتریبیوت‌ها به جز src و href برای تمیزکاری
-        $html = preg_replace('/<([a-z][a-z0-9]*)[^>]*?(\/?)>/i', '<$1$2>', $html);
-        // حذف تگ‌های خالی
-        return strip_tags($html, '<p><h2><h3><h4><ul><li><b><strong><br>');
+        if (empty($html)) return '';
+
+        // استفاده از DOMDocument برای دستکاری ساختار
+        $dom = new \DOMDocument();
+        // جلوگیری از خطاهای پارس HTML5 و تنظیم انکودینگ UTF-8
+        libxml_use_internal_errors(true);
+        $dom->loadHTML(mb_convert_encoding($html, 'HTML-ENTITIES', 'UTF-8'), LIBXML_HTML_NOIMPLIED | LIBXML_HTML_NODEFDTD);
+        libxml_clear_errors();
+
+        $xpath = new \DOMXPath($dom);
+
+        // ۱. حذف تگ‌های <a> که لینک‌های مزاحم (مثل x.com) هستند
+        // اگر لینک به توییتر/ایکس یا فیسبوک است، کل نود را حذف کن (چون معمولا دکمه share یا امبد است)
+        $socialLinks = $xpath->query('//a[contains(@href, "x.com") or contains(@href, "twitter.com") or contains(@href, "facebook.com") or contains(@href, "linkedin.com")]');
+        foreach ($socialLinks as $node) {
+            $node->parentNode->removeChild($node);
+        }
+
+        // ۲. حذف تمام اتریبیوت‌ها (class, style, id, ...) به جز src و href معتبر
+        $allNodes = $xpath->query('//*');
+        foreach ($allNodes as $node) {
+            // لیست اتریبیوت‌هایی که باید بمانند
+            $allowedAttributes = ['src', 'alt', 'title'];
+            // اگر تگ a است، href را نگه دار (مگر اینکه بخواهید تمام لینک‌ها را غیرفعال کنید)
+            if ($node->nodeName === 'a') {
+                $allowedAttributes[] = 'href';
+            }
+
+            if ($node->hasAttributes()) {
+                // کپی اتریبیوت‌ها به آرایه برای حذف امن در حلقه
+                $attributesToRemove = [];
+                foreach ($node->attributes as $attr) {
+                    if (!in_array($attr->name, $allowedAttributes)) {
+                        $attributesToRemove[] = $attr->name;
+                    }
+                }
+                foreach ($attributesToRemove as $attrName) {
+                    $node->removeAttribute($attrName);
+                }
+            }
+        }
+
+        // ۳. حذف تگ‌های خالی (مثل <p></p> که محتوایش حذف شده)
+        // چندین بار اجرا می‌شود تا تگ‌های تو در تو خالی حذف شوند
+        do {
+            $emptyNodes = $xpath->query('//*[not(*) and not(normalize-space()) and not(@src)]');
+            $removed = 0;
+            foreach ($emptyNodes as $node) {
+                // تگ‌های br و img نباید حذف شوند
+                if (!in_array($node->nodeName, ['br', 'img', 'hr'])) {
+                    $node->parentNode->removeChild($node);
+                    $removed++;
+                }
+            }
+        } while ($removed > 0);
+
+        return trim($dom->saveHTML());
     }
 
-    private function saveNews(array $translations, ?string $coverImage): int
+    private function processCategories(int $newsId, Crawler $crawler): void
     {
-        return DB::transaction(function () use ($translations, $coverImage) {
-            $slug = Str::slug(Str::limit($translations['title']['en'] ?? uniqid(), 50));
-            // اطمینان از یکتایی اسلاگ
-            if (DB::table('news')->where('slug', $slug)->exists()) {
-                $slug .= '-' . time();
+        $categoryIds = [$this->parentCategoryId];
+
+        $selector = $this->newsSelectors['breadcrumb'] ?? $this->newsSelectors['category'] ?? null;
+        if ($selector) {
+            try {
+                if ($crawler->filter($selector)->count() > 0) {
+                    $text = trim($crawler->filter($selector)->last()->text());
+                    $detectedId = DB::table('news_site_categories')
+                        ->where('news_site_id', $this->siteId)
+                        ->where('title', $text)
+                        ->value('id');
+
+                    if ($detectedId) $categoryIds[] = $detectedId;
+                }
+            } catch (\Exception) {}
+        }
+
+        $categoryIds = array_unique($categoryIds);
+        $insertData = array_map(fn($catId) => [
+            'news_id' => $newsId,
+            'category_id' => $catId,
+            'created_at' => now(),
+            'updated_at' => now(),
+        ], $categoryIds);
+
+        DB::table('category_news')->insertOrIgnore($insertData);
+    }
+
+    private function saveNews(array $translations): int
+    {
+        return DB::transaction(function () use ($translations) {
+            $englishTitle = $translations['title']['en'] ?? 'news-' . uniqid();
+            $slug = Str::slug(Str::limit($englishTitle, 100)); // محدودیت طول اسلاگ
+
+            $originalSlug = $slug;
+            $counter = 1;
+            while (DB::table('news')->where('slug', $slug)->exists()) {
+                $slug = $originalSlug . '-' . $counter++;
             }
 
             DB::table('news')->updateOrInsert(
@@ -190,10 +374,10 @@ class CrawlNewsContentJob implements ShouldQueue
                     'title' => json_encode($translations['title'], JSON_UNESCAPED_UNICODE),
                     'content' => json_encode($translations['content'], JSON_UNESCAPED_UNICODE),
                     'slug' => $slug,
-                    'published_at' => now(),
                     'news_site_id' => $this->siteId,
                     'status' => 'published',
-                    'updated_at' => now()
+                    'published_at' => now(),
+                    'updated_at' => now(),
                 ]
             );
 
@@ -201,24 +385,37 @@ class CrawlNewsContentJob implements ShouldQueue
         });
     }
 
-    // توابع کمکی دیگر مثل extractJsonLdData و loadConfig مشابه قبل هستند...
-    // برای خلاصه شدن کد تکرار نشدند اما باید وجود داشته باشند.
+    private function extractJsonLdData(Crawler $crawler): array
+    {
+        try {
+            $scripts = $crawler->filter('script[type="application/ld+json"]');
+            foreach ($scripts as $script) {
+                $content = trim($script->textContent);
+                if (empty($content)) continue;
 
-    private function extractJsonLdData(Crawler $crawler): array { return []; /* پیاده‌سازی قبلی */ }
+                $data = json_decode($content, true);
+                // هندل کردن حالتی که json-ld آرایه‌ای از آبجکت‌هاست (Graph)
+                if (isset($data['@graph'])) {
+                    foreach ($data['@graph'] as $item) {
+                        if (isset($item['@type']) && in_array($item['@type'], ['NewsArticle', 'Article', 'BlogPosting'])) {
+                            return $item;
+                        }
+                    }
+                }
+
+                if (is_array($data) && isset($data['@type']) && in_array($data['@type'], ['NewsArticle', 'Article', 'BlogPosting'])) {
+                    return $data;
+                }
+            }
+        } catch (\Exception) {}
+        return [];
+    }
+
     private function extractBySelector(Crawler $crawler, string $key): ?string
     {
-        if (empty($this->config['news_selectors'][$key])) return null;
+        if (empty($this->newsSelectors[$key])) return null;
         try {
-            return trim($crawler->filter($this->config['news_selectors'][$key])->text());
-        } catch (\Exception $e) { return null; }
-    }
-    private function loadConfig(): void { /* ... */ }
-
-    private function dispatchImageJob($newsId, $html, $image, $slug) {
-        $imgConfig = $this->config;
-        if ($image) $imgConfig['news_selectors']['json_ld_image'] = $image;
-
-        ProcessNewsImageJob::dispatch($newsId, $this->siteName, $this->url, $imgConfig, $html, $slug)
-            ->delay(now()->addSeconds(2));
+            return trim($crawler->filter($this->newsSelectors[$key])->text());
+        } catch (\Exception) { return null; }
     }
 }

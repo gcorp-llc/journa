@@ -5,10 +5,9 @@ namespace App\Jobs;
 use App\Traits\InteractsWithHttp;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Queue\Queueable;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Storage;
-use Illuminate\Support\Facades\DB;
-use Symfony\Component\DomCrawler\Crawler;
 use Intervention\Image\ImageManager;
 use Intervention\Image\Drivers\Gd\Driver;
 
@@ -18,179 +17,80 @@ class ProcessNewsImageJob implements ShouldQueue
 
     private const STORAGE_PATH = 'content_images';
 
-    private int $newsId;
-    private string $siteName;
-    private string $url;
-    private array $config;
-    private ?string $html;
-    private string $slug;
-
-    public function __construct(int $newsId, string $siteName, string $url, array $config, ?string $html = null, string $slug = '')
-    {
-        $this->newsId = $newsId;
-        $this->siteName = $siteName;
-        $this->url = $url;
-        $this->config = $config;
-        $this->html = $html;
-        $this->slug = $slug;
+    public function __construct(
+        private readonly int $newsId,
+        private readonly string $siteName,
+        private readonly string $imageUrl,
+        private readonly string $slug,
+    ) {
+        $this->onQueue('images');
     }
 
-    public function handle()
+    public function handle(): void
     {
         try {
-            // 1. پیدا کردن لینک تصویر با لاجیک اصلاح شده
-            $imageUrl = $this->findImageUrl();
-
-            if (!$imageUrl) {
-                Log::warning("⚠️ [تصویر یافت نشد]", ['news_id' => $this->newsId, 'url' => $this->url]);
+            // چک کردن اینکه آیا تصویر قبلاً پردازش شده؟ (برای جلوگیری از تکرار)
+            $existing = DB::table('news')->where('id', $this->newsId)->value('cover');
+            if ($existing && str_contains($existing, self::STORAGE_PATH)) {
                 return;
             }
 
-            // 2. دانلود تصویر
-            $response = $this->sendRequest($imageUrl, 'get');
+            Log::info('🖼️ شروع دانلود تصویر خبر', [
+                'news_id' => $this->newsId,
+                'url' => $this->imageUrl,
+            ]);
+
+            // اضافه کردن User-Agent برای جلوگیری از مسدود شدن توسط CDNها
+            $response = \Illuminate\Support\Facades\Http::withHeaders([
+                'User-Agent' => 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+                'Referer' => parse_url($this->imageUrl, PHP_URL_SCHEME) . '://' . parse_url($this->imageUrl, PHP_URL_HOST)
+            ])->timeout(15)->get($this->imageUrl);
+
+            if ($response->failed()) {
+                throw new \Exception("HTTP Error: " . $response->status());
+            }
+
             $imageContent = $response->body();
 
-            // بررسی صحت فایل دریافتی
-            $finfo = new \finfo(FILEINFO_MIME_TYPE);
-            $mimeType = $finfo->buffer($imageContent);
-
-            if (!in_array($mimeType, ['image/jpeg', 'image/png', 'image/webp', 'image/jpg', 'image/gif'])) {
-                Log::warning("⚠️ فرمت نامعتبر تصویر: $mimeType", ['url' => $imageUrl]);
-                return;
+            // اعتبارسنجی ساده محتوا
+            if (strlen($imageContent) < 1000) {
+                throw new \Exception("فایل دانلود شده بسیار کوچک است و احتمالاً تصویر نیست.");
             }
 
-            // 3. پردازش تصویر
             $manager = new ImageManager(new Driver());
             $image = $manager->read($imageContent);
 
-            // ریسایز اگر خیلی بزرگ بود
+            // ریسایز هوشمند
             if ($image->width() > 1200) {
                 $image->scaleDown(width: 1200);
             }
 
+            // تبدیل به WebP
             $encoded = $image->toWebp(quality: 80);
 
-            // 4. ساخت مسیر پوشه بر اساس تاریخ روز (Y-m-d)
-            // مثال: content_images/2025-09-16/my-slug-123.webp
             $dateFolder = now()->format('Y-m-d');
-            $filename = $this->slug . '-' . uniqid() . '.webp';
+            // تمیز کردن نام فایل از کاراکترهای غیرمجاز
+            $safeSlug = preg_replace('/[^a-z0-9\-]+/', '-', strtolower($this->slug));
+            $filename = trim($safeSlug, '-') . '-' . uniqid() . '.webp';
             $path = self::STORAGE_PATH . '/' . $dateFolder . '/' . $filename;
 
             Storage::disk('public')->put($path, $encoded);
 
-            // 5. آپدیت دیتابیس
-            DB::table('news')->where('id', $this->newsId)->update([
-                'cover' => $path,
-                'updated_at' => now()
-            ]);
+            DB::table('news')
+                ->where('id', $this->newsId)
+                ->update([
+                    'cover' => $path,
+                    'updated_at' => now(),
+                ]);
 
-            Log::info("✅ [تصویر ذخیره شد]", ['path' => $path]);
+            Log::info('✅ تصویر ذخیره شد', ['path' => $path]);
 
         } catch (\Exception $e) {
-            Log::error("❌ خطای پردازش تصویر", [
+            Log::error('❌ شکست در پردازش تصویر', [
                 'news_id' => $this->newsId,
+                'url' => $this->imageUrl,
                 'msg' => $e->getMessage(),
-                'line' => $e->getLine()
             ]);
         }
-    }
-
-    private function findImageUrl(): ?string
-    {
-        // الف) اولویت با JSON-LD (چون دقیق‌ترین است)
-        $jsonImage = $this->config['news_selectors']['json_ld_image'] ?? null;
-        if ($this->isValidUrl($jsonImage)) {
-            return $this->normalizeUrl($jsonImage);
-        }
-
-        if (!$this->html) return null;
-        $crawler = new Crawler($this->html);
-
-        // ب) بررسی متاتگ تعریف شده در کانفیگ (cover_alt)
-        // این بخش قبلاً فقط og:image را چک می‌کرد اما الان دینامیک است
-        if (!empty($this->config['news_selectors']['cover_alt'])) {
-            try {
-                $selector = $this->config['news_selectors']['cover_alt'];
-                $node = $crawler->filter($selector);
-                if ($node->count() > 0) {
-                    // برای متاتگ‌ها معمولا content است، برای بقیه src
-                    $attr = str_contains($selector, 'meta') ? 'content' : 'src';
-                    $val = $node->attr($attr);
-                    if ($val) return $this->normalizeUrl($val);
-                }
-            } catch (\Exception $e) {}
-        }
-
-        // ج) فال‌بک به og:image استاندارد اگر در کانفیگ نبود یا پیدا نشد
-        try {
-            if ($crawler->filter('meta[property="og:image"]')->count() > 0) {
-                $val = $crawler->filter('meta[property="og:image"]')->attr('content');
-                if ($val) return $this->normalizeUrl($val);
-            }
-        } catch (\Exception $e) {}
-
-        // د) بررسی سلکتورهای CSS (cover, cover_carousel)
-        $cssSelectors = ['cover', 'cover_carousel'];
-        foreach ($cssSelectors as $key) {
-            if (!empty($this->config['news_selectors'][$key])) {
-                try {
-                    $selector = $this->config['news_selectors'][$key];
-                    $node = $crawler->filter($selector);
-
-                    if ($node->count() > 0) {
-                        // تلاش برای پیدا کردن بهترین اتریبیوت عکس
-                        $src = $node->attr('src')
-                            ?? $node->attr('data-src')
-                            ?? $node->attr('data-original')
-                            ?? $node->attr('srcset'); // گاهی عکس‌ها در srcset هستند
-
-                        if ($src) {
-                            // اگر srcset بود، اولین url را بردار
-                            if (str_contains($src, ',')) {
-                                $src = explode(' ', trim(explode(',', $src)[0]))[0];
-                            }
-                            return $this->normalizeUrl($src);
-                        }
-                    }
-                } catch (\Exception $e) {}
-            }
-        }
-
-        return null;
-    }
-
-    /**
-     * تبدیل لینک‌های نسبی به لینک‌های مطلق
-     */
-    private function normalizeUrl(?string $link): ?string
-    {
-        if (empty($link)) return null;
-
-        $link = trim($link);
-
-        // اگر خودش لینک کامل است
-        if (str_starts_with($link, 'http')) return $link;
-
-        // دریافت ریشه سایت از URL اصلی خبر
-        $parsedUrl = parse_url($this->url);
-        $baseUrl = $parsedUrl['scheme'] . '://' . $parsedUrl['host'];
-
-        // اگر با / شروع می‌شود (مثل /images/pic.jpg)
-        if (str_starts_with($link, '/')) {
-            return $baseUrl . $link;
-        }
-
-        // اگر فقط نام فایل است (مثل pic.jpg) - فرض بر این است که در مسیر جاری است
-        // اما معمولا در سایت‌های خبری modern این حالت کمتر رخ می‌دهد، با این حال:
-        return $baseUrl . '/' . $link;
-    }
-
-    /**
-     * اعتبارسنجی اولیه (لینک نباید خالی باشد)
-     * اعتبارسنجی دقیق‌تر بعد از نرمال‌سازی انجام می‌شود
-     */
-    private function isValidUrl($url): bool
-    {
-        return !empty($url) && is_string($url);
     }
 }

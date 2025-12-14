@@ -4,38 +4,21 @@ return [
     'sites' => [
         'The New York Times' => [
             'category_selectors' => [
-                // سلکتورهای شما برای لینک‌ها درست به نظر می‌رسند
                 'links' => 'a.css-1u3p7j1, a.css-8hzhxf',
-                // توجه: فیلتر خالی لینک‌های ویدئو را هم عبور می‌دهد
                 'filter' => '',
             ],
             'news_selectors' => [
-                // استفاده از data-testid به جای کلاس css شکننده
                 'title' => 'h1[data-testid="headline"]',
-
-                // استفاده از تگ section معنایی برای بدنه اصلی مقاله
                 'content' => 'section[name="articleBody"]',
-
-                // انتخاب تصویر اصلی مقاله (برای مقالات تک‌عکسی) با استفاده از itemprop
                 'cover' => 'figure[itemprop="image"] img',
-
-                // انتخاب اولین تصویر از اسلایدر (اگر مقاله اسلایدر داشته باشد)
-                // کد ProcessNewsImageJob ابتدا این را چک می‌کند
                 'cover_carousel' => '[data-testid="slideshow-container"] figure:first-child img',
-
-                // فال‌بک اصلی شما همچنان پابرجاست
                 'cover_alt' => 'meta[property="og:image"]',
-
-                // لیست بهبود یافته برای حذف محتوای ناخواسته
                 'unwanted_content_selectors' => [
-                    'aside', // حذف سایدبارها
-                    '.ad',
-                    '.inline-ad',
-                    '.banner',
-                    '[data-testid*="ad-"]', // حذف جامع‌تر تبلیغات
-                    '[data-testid="related-content"]', // حذف مطالب مرتبط
-                    '[data-testid="bottom-of-article"]', // حذف بخش پایین مقاله
-                    '[data-testid="newsletter-promo"]' // حذف تبلیغ خبرنامه
+                    'aside', '.ad', '.inline-ad', '.banner',
+                    '[data-testid*="ad-"]', '[data-testid="related-content"]',
+                    '[data-testid="bottom-of-article"]', '[data-testid="newsletter-promo"]',
+                    '.css-158dogj', // دکمه‌های اشتراک‌گذاری NYT
+                    'div[role="toolbar"]'
                 ],
             ],
             'rate_limit' => 2,

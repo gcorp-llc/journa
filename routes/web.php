@@ -5,6 +5,13 @@ use Illuminate\Support\Facades\Route;
 use Livewire\Volt\Volt;
 
 
+Route::get('/redis-test', function () {
+    $redis = Illuminate\Support\Facades\Redis::connection('default');
+    $redis->set('laravel_test', 'ok');
+    return $redis->get('laravel_test');
+});
+
+
 
 
 Route::group(['middleware' => 'firewall.all'], function () {
