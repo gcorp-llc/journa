@@ -3,7 +3,7 @@
 use Illuminate\Auth\Events\Logout;
 use Illuminate\Support\Facades\Route;
 use Illuminate\Support\Str;
-use Livewire\Volt\Component;
+use Livewire\Component;
 
 new class extends Component {
 

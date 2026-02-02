@@ -23,7 +23,7 @@ class ProcessNewsImageJob implements ShouldQueue
         private readonly string $imageUrl,
         private readonly string $slug,
     ) {
-        $this->onQueue('images');
+
     }
 
     public function handle(): void

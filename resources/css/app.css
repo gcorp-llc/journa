@@ -7,7 +7,7 @@
 
 
 @plugin "daisyui" {
-    themes: nord --default;
+    themes: sunset --default;
 }
 @plugin "@iconify/tailwind4";
 

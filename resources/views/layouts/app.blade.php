@@ -7,7 +7,7 @@
     <link rel="shortcut icon" href="{{ asset('favicon.png') }}" type="image/x-icon">
     @vite(['resources/css/app.css', 'resources/js/app.js'])
     <!-- Vazir Font -->
-    <link href="https://cdn.jsdelivr.net/npm/vazir-font@32.102.2/dist/font-face.css" rel="stylesheet">
+{{--    <link href="https://cdn.jsdelivr.net/npm/vazir-font@32.102.2/dist/font-face.css" rel="stylesheet">--}}
     <!-- SEO Meta Tags -->
     {!! SEO::generate(true) !!}
     <!-- Google Tag Manager -->
@@ -24,13 +24,13 @@
         })(window,document,'script','dataLayer','GTM-5CZP6X6N');
     </script>
     <!-- End Google Tag Manager -->
-    <link
-        rel="stylesheet"
-        href="https://cdn.jsdelivr.net/npm/swiper@11/swiper-bundle.min.css"
-    />
+{{--    <link--}}
+{{--        rel="stylesheet"--}}
+{{--        href="https://cdn.jsdelivr.net/npm/swiper@11/swiper-bundle.min.css"--}}
+{{--    />--}}
 
 </head>
-<body data-theme="nord" class="font-vazir">
+<body data-theme="sunset" class="font-vazir ">
 <!-- Google Tag Manager (noscript) -->
 <noscript>
     <iframe src="https://www.googletagmanager.com/ns.html?id=GTM-5CZP6X6N" height="0" width="0" style="display:none;visibility:hidden"></iframe>
@@ -38,7 +38,34 @@
 <!-- End Google Tag Manager (noscript) -->
 <!-- Header Section -->
 <livewire:components.header/>
-<div class="min-h-screen text-base-content md:mt-10 mt-20">
+<header class="relative overflow-hidden">
+    <!-- Background -->
+    <div class="absolute inset-0 bg-gradient-to-b from-neutral to-black opacity-95"></div>
+
+    <!-- Subtle Pattern -->
+    <div class="absolute inset-0 bg-[radial-gradient(circle_at_top,rgba(255,255,255,0.05),transparent_60%)]"></div>
+
+    <!-- Content -->
+    <div class="relative z-10 max-w-7xl mx-auto px-6 py-24 text-center">
+
+
+        <!-- Title -->
+        <h1 class="text-3xl md:text-5xl font-bold  tracking-wide leading-relaxed text-white">
+            به یاد فرزندان جاویدان این سرزمین
+        </h1>
+
+        <!-- Divider -->
+        <div class="flex justify-center my-8">
+            <span class="h-px w-32 bg-error opacity-60"></span>
+        </div>
+
+        <!-- Subtitle (optional) -->
+        <p class="max-w-2xl mx-auto text-base md:text-lg text-white leading-loose">
+            یادشان همواره در قلب این خاک زنده خواهد ماند
+        </p>
+    </div>
+</header>
+<div class="min-h-screen text-base-content  md:mt-10 mt-20">
     <!-- Main Content -->
     <div class="container mx-auto px-4 py-8">
         <div class="grid md:grid-cols-3 grid-cols-1 gap-4">
@@ -47,7 +74,7 @@
                 <livewire:components.advertisement/>
             </div>
             <!-- بخش محتوا -->
-            <div class="md:col-span-2">
+            <div class="md:col-span-2 ">
 
                 {{ $slot }}
             </div>
@@ -56,19 +83,19 @@
     </div>
 </div>
 <!-- Swiper JS -->
-<script src="https://cdn.jsdelivr.net/npm/swiper@11/swiper-bundle.min.js"></script>
+{{--<script src="https://cdn.jsdelivr.net/npm/swiper@11/swiper-bundle.min.js"></script>--}}
 
 <!-- Initialize Swiper -->
-<script>
-    var swiper = new Swiper(".mySwiper", {
-        effect: "cards",
-        grabCursor: true,
-        centeredSlides: true,
-        autoplay: {
-            delay: 2500,
-            disableOnInteraction: false,
-        },
-    });
-</script>
+{{--<script>--}}
+{{--    var swiper = new Swiper(".mySwiper", {--}}
+{{--        effect: "cards",--}}
+{{--        grabCursor: true,--}}
+{{--        centeredSlides: true,--}}
+{{--        autoplay: {--}}
+{{--            delay: 2500,--}}
+{{--            disableOnInteraction: false,--}}
+{{--        },--}}
+{{--    });--}}
+{{--</script>--}}
 </body>
 </html>

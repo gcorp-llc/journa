@@ -88,8 +88,7 @@ class CrawlNewsContentJob implements ShouldQueue
             $slugForImage = $translations['title']['en'] ?? Str::slug(Str::limit($title, 50));
 
             if ($coverImageUrl) {
-                ProcessNewsImageJob::dispatch($newsId, $this->siteName, $coverImageUrl, $slugForImage)
-                    ->onQueue('images');
+                ProcessNewsImageJob::dispatch($newsId, $this->siteName, $coverImageUrl, $slugForImage);
             } else {
                 Log::warning('⚠️ تصویر کاور یافت نشد', ['news_id' => $newsId, 'url' => $this->url]);
             }
@@ -263,7 +262,9 @@ class CrawlNewsContentJob implements ShouldQueue
 
     /**
      * تمیزکاری پیشرفته HTML با DOMDocument
-     * حذف کلاس‌ها، استایل‌ها و لینک‌های مزاحم
+     * تغییرات:
+     * ۱- حذف کامل کلاس‌ها و استایل‌ها
+     * ۲- حذف لینک‌ها (a tags) اما حفظ متن آن‌ها
      */
     private function cleanHtmlContent(string $html): string
     {
@@ -278,25 +279,31 @@ class CrawlNewsContentJob implements ShouldQueue
 
         $xpath = new \DOMXPath($dom);
 
-        // ۱. حذف تگ‌های <a> که لینک‌های مزاحم (مثل x.com) هستند
-        // اگر لینک به توییتر/ایکس یا فیسبوک است، کل نود را حذف کن (چون معمولا دکمه share یا امبد است)
-        $socialLinks = $xpath->query('//a[contains(@href, "x.com") or contains(@href, "twitter.com") or contains(@href, "facebook.com") or contains(@href, "linkedin.com")]');
-        foreach ($socialLinks as $node) {
+        // ۱. حذف کامل تگ‌های لینک (<a>) اما حفظ متن آن‌ها (Unwrap)
+        // این کار باعث می‌شود متن بماند اما لینک حذف شود
+        $links = $xpath->query('//a');
+        foreach ($links as $link) {
+            $fragment = $dom->createDocumentFragment();
+            while ($link->childNodes->length > 0) {
+                $fragment->appendChild($link->childNodes->item(0));
+            }
+            $link->parentNode->replaceChild($fragment, $link);
+        }
+
+        // ۲. حذف تگ‌های مزاحم دیگر (script, style, iframe و...)
+        // اگر هنوز باقی مانده باشند
+        $scriptsAndStyles = $xpath->query('//script | //style | //iframe | //button | //form');
+        foreach ($scriptsAndStyles as $node) {
             $node->parentNode->removeChild($node);
         }
 
-        // ۲. حذف تمام اتریبیوت‌ها (class, style, id, ...) به جز src و href معتبر
+        // ۳. حذف تمام اتریبیوت‌ها (class, style, id, href, ...) به جز src و alt
+        // تنها تصاویر باید اتریبیوت داشته باشند
         $allNodes = $xpath->query('//*');
         foreach ($allNodes as $node) {
-            // لیست اتریبیوت‌هایی که باید بمانند
-            $allowedAttributes = ['src', 'alt', 'title'];
-            // اگر تگ a است، href را نگه دار (مگر اینکه بخواهید تمام لینک‌ها را غیرفعال کنید)
-            if ($node->nodeName === 'a') {
-                $allowedAttributes[] = 'href';
-            }
+            $allowedAttributes = ['src', 'alt']; // فقط این‌ها مجاز هستند
 
             if ($node->hasAttributes()) {
-                // کپی اتریبیوت‌ها به آرایه برای حذف امن در حلقه
                 $attributesToRemove = [];
                 foreach ($node->attributes as $attr) {
                     if (!in_array($attr->name, $allowedAttributes)) {
@@ -309,13 +316,11 @@ class CrawlNewsContentJob implements ShouldQueue
             }
         }
 
-        // ۳. حذف تگ‌های خالی (مثل <p></p> که محتوایش حذف شده)
-        // چندین بار اجرا می‌شود تا تگ‌های تو در تو خالی حذف شوند
+        // ۴. حذف تگ‌های خالی (مثل <p></p>)
         do {
             $emptyNodes = $xpath->query('//*[not(*) and not(normalize-space()) and not(@src)]');
             $removed = 0;
             foreach ($emptyNodes as $node) {
-                // تگ‌های br و img نباید حذف شوند
                 if (!in_array($node->nodeName, ['br', 'img', 'hr'])) {
                     $node->parentNode->removeChild($node);
                     $removed++;
@@ -360,8 +365,16 @@ class CrawlNewsContentJob implements ShouldQueue
     {
         return DB::transaction(function () use ($translations) {
             $englishTitle = $translations['title']['en'] ?? 'news-' . uniqid();
-            $slug = Str::slug(Str::limit($englishTitle, 100)); // محدودیت طول اسلاگ
 
+            // اضافه کردن تاریخ به اسلاگ برای جلوگیری از تداخل
+            // فرمت: عنوان-انگلیسی-YYYY-MM-DD
+            $dateSuffix = now()->format('Y-m-d');
+
+            // محدود کردن طول عنوان برای جا شدن تاریخ
+            $slugBase = Str::slug(Str::limit($englishTitle, 80));
+            $slug = $slugBase . '-' . $dateSuffix;
+
+            // اطمینان از یکتایی کامل (در صورت وجود پست‌های متعدد با عنوان مشابه در یک روز)
             $originalSlug = $slug;
             $counter = 1;
             while (DB::table('news')->where('slug', $slug)->exists()) {
@@ -394,7 +407,6 @@ class CrawlNewsContentJob implements ShouldQueue
                 if (empty($content)) continue;
 
                 $data = json_decode($content, true);
-                // هندل کردن حالتی که json-ld آرایه‌ای از آبجکت‌هاست (Graph)
                 if (isset($data['@graph'])) {
                     foreach ($data['@graph'] as $item) {
                         if (isset($item['@type']) && in_array($item['@type'], ['NewsArticle', 'Article', 'BlogPosting'])) {

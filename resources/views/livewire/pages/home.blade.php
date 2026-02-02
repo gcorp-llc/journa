@@ -1,7 +1,7 @@
 <?php
+use Livewire\Component;
 use Livewire\WithoutUrlPagination;
 use Livewire\WithPagination;
-use Livewire\Volt\Component;
 use Artesaos\SEOTools\Facades\SEOMeta;
 use Artesaos\SEOTools\Facades\OpenGraph;
 use App\Models\News;
@@ -49,7 +49,7 @@ new class extends Component {
                     <p class="text-gray-500">هیچ خبری برای نمایش وجود ندارد.</p>
                 </div>
             @else
-                <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+                <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-2 gap-6">
                     @foreach ($news as $item)
                         <div>
                             <livewire:components.news-card :news="$item" wire:key="news-{{ $item->id }}" />

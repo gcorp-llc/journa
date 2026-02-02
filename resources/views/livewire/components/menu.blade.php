@@ -1,6 +1,6 @@
 <div class="drawer-side z-50">
     <label for="my-drawer" aria-label="close sidebar" class="drawer-overlay"></label>
-    <ul class="menu bg-white/70 backdrop-blur-2xl text-base-content min-h-full w-80 p-4 shadow-lg">
+    <ul class="menu  backdrop-blur-2xl bg-slate-800/60 text-base-content min-h-full w-80 p-4 shadow-lg">
         @foreach ($menuItems as $key => $item)
             <li class="mb-2">
                 @if (!empty($item['children']))
@@ -8,7 +8,7 @@
                         <summary class="flex items-center gap-3 px-4 py-3 rounded-lg cursor-pointer transition-colors duration-200">
                             <span class="w-5 h-5 group-open:rotate-90 transition-transform duration-200">
                                @if($item['icon'])
-                                    <x-icon :name="$item['icon']" />
+                                    {{-- <x-icon :name="$item['icon']" /> --}}
                                @endif
                             </span>
                             <span class="font-medium">{{ $item['title'] }}</span>
@@ -18,7 +18,7 @@
                                 <li>
                                     <a href="{{ $child['slug'] === 'home' ? '/' : '/cat/' . ($child['slug'] === $key ? $key : $key . '/' . $child['slug']) }}"
                                        wire:click="$dispatch('close-drawer')"
-                                       class="flex items-center gap-3 px-4 py-2 rounded-lg transition-colors duration-200">
+                                       class="flex items-center gap-3 px-4 py-2 rounded-lg transition-colors text-grey-900 duration-200">
                                         <span>{{ $child['title'] }}</span>
                                     </a>
                                 </li>
@@ -31,7 +31,7 @@
                        class="flex items-center gap-3 px-4 py-3 rounded-lg transition-colors duration-200">
                         <span class="w-5 h-5">
                             @if($item['icon'])
-                                <x-icon :name="$item['icon']" />
+                                {{-- <x-icon :name="$item['icon']" /> --}}
                             @endif
                         </span>
                         <span class="font-medium">{{ $item['title'] }}</span>

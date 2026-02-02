@@ -146,20 +146,26 @@ return [
 
         'options' => [
             'cluster' => env('REDIS_CLUSTER', 'redis'),
-            'prefix' => env('REDIS_PREFIX', Str::slug(env('APP_NAME', 'laravel'), '_').'_database_'),
+            'prefix' => env('REDIS_PREFIX', 'journa_'),  // ✅ Prefix ثابت برای journa
             'persistent' => env('REDIS_PERSISTENT', false),
         ],
 
         'default' => [
             'scheme' => 'unix',
             'path' => env('REDIS_HOST', '/home/zetebir/redis/redis.sock'),
-            'database' => env('REDIS_DB', 0),
+            'database' => env('REDIS_DB', 3),  // ✅ Database 3
         ],
 
         'cache' => [
             'scheme' => 'unix',
             'path' => env('REDIS_HOST', '/home/zetebir/redis/redis.sock'),
-            'database' => env('REDIS_CACHE_DB', 1),
+            'database' => env('REDIS_CACHE_DB', 4),  // ✅ Database 4 برای Cache
+        ],
+
+        'queue' => [  // ✅ اضافه کردن connection اختصاصی برای Queue
+            'scheme' => 'unix',
+            'path' => env('REDIS_HOST', '/home/zetebir/redis/redis.sock'),
+            'database' => env('REDIS_QUEUE_DB', 5),  // ✅ Database 5 برای Queue
         ],
 
     ],

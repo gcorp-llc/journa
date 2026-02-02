@@ -42,20 +42,6 @@
       0 => 'BladeUI\\Icons\\BladeIconsServiceProvider',
     ),
   ),
-  'codeat3/blade-solar-icons' => 
-  array (
-    'providers' => 
-    array (
-      0 => 'Codeat3\\BladeSolarIcons\\BladeSolarIconsServiceProvider',
-    ),
-  ),
-  'davidhsianturi/blade-bootstrap-icons' => 
-  array (
-    'providers' => 
-    array (
-      0 => 'Davidhsianturi\\BladeBootstrapIcons\\BladeBootstrapIconsServiceProvider',
-    ),
-  ),
   'filament/actions' => 
   array (
     'providers' => 
@@ -124,17 +110,6 @@
     'providers' => 
     array (
       0 => 'Filament\\Widgets\\WidgetsServiceProvider',
-    ),
-  ),
-  'guava/filament-icon-picker' => 
-  array (
-    'aliases' => 
-    array (
-      'IconPicker' => 'IconManager',
-    ),
-    'providers' => 
-    array (
-      0 => 'Guava\\IconPicker\\IconPickerServiceProvider',
     ),
   ),
   'jenssegers/agent' => 
@@ -227,13 +202,6 @@
     'providers' => 
     array (
       0 => 'Livewire\\LivewireServiceProvider',
-    ),
-  ),
-  'livewire/volt' => 
-  array (
-    'providers' => 
-    array (
-      0 => 'Livewire\\Volt\\VoltServiceProvider',
     ),
   ),
   'mcamara/laravel-localization' => 

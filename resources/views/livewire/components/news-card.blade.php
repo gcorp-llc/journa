@@ -29,7 +29,7 @@
 
         <div class="card-body p-4">
             <div class="flex items-center justify-between mb-2">
-                <h2 class="card-title text-lg font-semibold line-clamp-2">
+                <h2 class="card-title text-lg font-semibold text-slate-800 text-shadow-slate-800 line-clamp-2">
                     {{ $news->title }}
                 </h2>
             </div>

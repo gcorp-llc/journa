@@ -8,9 +8,9 @@
     <link rel="shortcut icon" href="{{ asset('favicon.png') }}" type="image/x-icon">
     @vite(['resources/css/app.css', 'resources/js/app.js'])
     <!-- Vazir Font -->
-    <link href="https://cdn.jsdelivr.net/npm/vazir-font@32.102.2/dist/font-face.css" rel="stylesheet">
+    {{--    <link href="https://cdn.jsdelivr.net/npm/vazir-font@32.102.2/dist/font-face.css" rel="stylesheet">--}}
     <!-- SEO Meta Tags -->
-    {!! SEO::generate(true) !!}
+    {!! SEO::generate() !!}
     <!-- Google Tag Manager -->
     <script>
         (function (w, d, s, l, i) {
@@ -40,7 +40,34 @@
 <!-- End Google Tag Manager (noscript) -->
 <!-- Header Section -->
 <livewire:components.header/>
-<div class="min-h-screen text-white md:pt-10 pt-15">
+<header class="relative overflow-hidden">
+    <!-- Background -->
+    <div class="absolute inset-0 bg-gradient-to-b from-neutral to-black opacity-95"></div>
+
+    <!-- Subtle Pattern -->
+    <div class="absolute inset-0 bg-[radial-gradient(circle_at_top,rgba(255,255,255,0.05),transparent_60%)]"></div>
+
+    <!-- Content -->
+    <div class="relative z-10 max-w-7xl mx-auto px-6 py-24 text-center">
+
+
+        <!-- Title -->
+        <h1 class="text-3xl md:text-5xl font-bold  tracking-wide leading-relaxed text-white">
+            به یاد فرزندان جاویدان این سرزمین
+        </h1>
+
+        <!-- Divider -->
+        <div class="flex justify-center my-8">
+            <span class="h-px w-32 bg-error opacity-60"></span>
+        </div>
+
+        <!-- Subtitle (optional) -->
+        <p class="max-w-2xl mx-auto text-base md:text-lg text-white leading-loose">
+            یادشان همواره در قلب این خاک زنده خواهد ماند
+        </p>
+    </div>
+</header>
+<div class="min-h-screen text-white md:pt-10 pt-15 bg-slate-800">
     <!-- Main Content -->
     <div class="container mx-auto md:px-4 md:py-8">
         {{ $slot }}

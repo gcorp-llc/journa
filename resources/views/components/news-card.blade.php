@@ -39,7 +39,7 @@
         </div>
         <div class="card-body p-4">
             <div class="flex items-center justify-between mb-2 {{ in_array($locale, ['fa', 'ar']) ? 'flex-row-reverse' : '' }}">
-                <h2 class="card-title text-lg font-semibold line-clamp-2">
+                <h2 class="card-title text-lg font-semibold line-clamp-2 text-shadow-cyan-950">
                     {{ $news['title'] }}
                 </h2>
                 @if ($news['news_site_name'])

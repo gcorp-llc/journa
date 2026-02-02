@@ -1,6 +1,5 @@
 <?php
-
-use Livewire\Volt\Component;
+use Livewire\Component;
 use App\Models\News;
 use Livewire\WithPagination;
 use Livewire\Attributes\Url;

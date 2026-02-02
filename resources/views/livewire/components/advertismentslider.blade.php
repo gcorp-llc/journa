@@ -1,6 +1,6 @@
 <?php
 // Carousel Component
-use function Livewire\Volt\{state};
+use Livewire\Component;
 
 state(['ads' => fn() => \App\Models\Advertisement::get()]);
 ?>

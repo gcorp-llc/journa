@@ -1,8 +1,7 @@
 <?php
 
-namespace App\Livewire\News;
-
 use Livewire\Component;
+
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
@@ -10,12 +9,12 @@ use Artesaos\SEOTools\Facades\SEOMeta;
 use Artesaos\SEOTools\Facades\OpenGraph;
 use Morilog\Jalali\Jalalian;
 use App\Models\News;
-
-class Show extends Component
+use Livewire\Attributes\Computed;
+new class extends Component
 {
     public ?News $news = null;
     public bool $isLoading = true;
-    public $lastnews;
+
 
     public function mount(string $slug): void
     {
@@ -38,7 +37,6 @@ class Show extends Component
             ->increment('views');
 
         $this->news = $news;
-        $this->lastnews = News::latest()->limit(9)->get();
         $this->isLoading = false;
 
         $this->setSeo($news);
@@ -65,19 +63,17 @@ class Show extends Component
             OpenGraph::addImage(Storage::url($news->cover));
         }
     }
-
+    #[Computed]
     public function formatDateByLocale($date, string $locale): string
     {
         return match ($locale) {
-            'fa' => Jalalian::fromDateTime($date)->format('Y/m/d'),
-            'ar' => Jalalian::fromDateTime($date)->format('Y/m/d'),
+            'fa' => \Morilog\Jalali\Jalalian::fromDateTime($date)->format('Y/m/d'),
+            'ar' => \Morilog\Jalali\Jalalian::fromDateTime($date)->format('Y/m/d'),
             default => $date->format('Y/m/d'),
         };
     }
 
-
-}
-
+};
 ?>
 <div class="relative min-h-screen rounded-2xl bg-white/50 backdrop-blur-md my-4 sm:my-8">
     <!-- Decorative Background Elements -->
@@ -113,7 +109,7 @@ class Show extends Component
 
                     @if($news->published_at)
                         <div class="badge badge-soft badge-secondary text-xs font-medium px-3 py-2">
-                            {{ formatDateByLocale($news->published_at, app()->getLocale()) }}
+                            {{ $this->formatDateByLocale($news->published_at, app()->getLocale()) }}
                         </div>
                     @endif
 
@@ -129,10 +125,7 @@ class Show extends Component
                 </div>
             </header>
 
-            <!-- Advertisement Slider -->
-            <div class="my-10 rounded-xl overflow-hidden">
-                <livewire:components.advertismentslider />
-            </div>
+
 
             <!-- Article Content -->
             <div class="prose prose-invert prose-lg max-w-none text-justify text-lg text-slate-800 mb-10">
@@ -157,24 +150,10 @@ class Show extends Component
             @endif
         </div>
     </article>
+    <!-- Advertisement Slider -->
+    <div class="my-10 rounded-xl overflow-hidden">
+        <livewire:components.advertisement />
+    </div>
 
-    @if($lastnews)
-        <section class="container mx-auto px-4 py-12">
-            <h2 class="text-3xl font-bold">{{ __('menu.home.title') }}</h2>
-            <p>{{ __('menu.home.description') }}</p>
-            <div class="w-full">
-                <div class="carousel carousel-center rounded-2xl w-full my-3 space-x-4 p-4 bg-gradient-to-r from-slate-900 to-sky-950">
-                    @forelse($lastnews as $item)
-                        <div class="carousel-item snap-center w-80 flex-shrink-0">
-                            <livewire:components.news-card :news="$item" />
-                        </div>
-                    @empty
-                        <div class="w-full flex items-center justify-center h-40 text-gray-500">
-                            <span>{{ __('messages.no_ads') }}</span>
-                        </div>
-                    @endforelse
-                </div>
-            </div>
-        </section>
-    @endif
 </div>
+

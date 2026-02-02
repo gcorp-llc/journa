@@ -1,6 +1,5 @@
 <?php
-
-use Livewire\Volt\Component;
+use Livewire\Component;
 use Livewire\WithPagination;
 use Artesaos\SEOTools\Facades\SEOMeta;
 use Artesaos\SEOTools\Facades\OpenGraph;
@@ -76,7 +75,7 @@ new class extends Component {
     <div class="mb-8">
         <h1 class="text-4xl font-bold text-white mb-3 flex">
             @if($category->icon)
-                <x-icon :name="$category->icon" class="w-9 h-9 me-2" />
+                {{-- <x-icon :name="$category->icon" class="w-9 h-9 me-2" /> --}}
             @endif
             {{ $category->title }}
         </h1>
@@ -97,7 +96,7 @@ new class extends Component {
                 <p class="text-gray-500 max-w-md">{{ __('news.noContent') }}</p>
             </div>
         @else
-            <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+            <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-2 gap-6">
                 @foreach ($news as $item)
                     <div>
                         <livewire:components.news-card :news="$item" wire:key="cat-news-{{ $item->id }}" />
