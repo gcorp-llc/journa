@@ -52,7 +52,7 @@ new class extends Component {
             })
 
                 ->orderBy('id', 'desc')
-                ->paginate(177), // تعداد آیتم‌های درخواستی
+                ->paginate(77), // تعداد آیتم‌های درخواستی
         ];
     }
 };

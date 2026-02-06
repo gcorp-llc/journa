@@ -14,7 +14,7 @@ new class extends Component {
         return [
             'news' => News::query()
                 ->orderBy('id', 'desc')           // اولویت دوم برای اطمینان
-                ->paginate(177),                  // تعداد درخواستی شما
+                ->paginate(77),                  // تعداد درخواستی شما
         ];
     }
 

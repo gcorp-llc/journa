@@ -39,7 +39,7 @@ new class extends Component {
         return [
             'news' => $this->childCategory->news()
                 ->orderBy('id', 'desc')
-                ->paginate(177),
+                ->paginate(77),
         ];
     }
 };
