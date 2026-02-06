@@ -2,22 +2,17 @@
 
 namespace App\Http\Controllers;
 
+use App\Http\Resources\AdvertisementResource;
+use App\Models\Advertisement;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
 
 class AdController extends Controller
 {
     public function index(Request $request)
     {
         try {
-            $page = $request->query('page', 1);
-            $limit = $request->query('limit', 10);
-            $locale = $request->query('locale', 'fa');
-            $offset = ($page - 1) * $limit;
-
-            $cacheKey = "ads_{$locale}_{$page}_{$limit}";
-
-            $ads = DB::table('advertisements')
+            $ads = Advertisement::query()
                 ->where('is_active', true)
                 ->where(function ($query) {
                     $query->whereNull('start_date')
@@ -35,57 +30,27 @@ class AdController extends Controller
                     $query->whereNull('max_clicks')
                         ->orWhereColumn('current_clicks', '<', 'max_clicks');
                 })
-                ->select(
-                    'id',
-                    DB::raw("JSON_UNQUOTE(JSON_EXTRACT(title, '$.\"{$locale}\"')) as title"),
-                    DB::raw("CONCAT('" . asset('storage') . "/', cover) as cover"),
-                    DB::raw("JSON_UNQUOTE(JSON_EXTRACT(subject, '$.\"{$locale}\"')) as subject"),
-                    DB::raw("JSON_UNQUOTE(JSON_EXTRACT(content, '$.\"{$locale}\"')) as content"),
-                    'destination_url',
-                )
-                ->offset($offset)
-                ->limit($limit)
+                ->latest()
                 ->get();
 
-            return response()->json([
-                'data' => $ads,
-                'success' => true,
-            ], 200, [
-                'Cache-Control' => 'public, max-age=300',
-            ]);
+            // ثبت Impression
+            Advertisement::whereIn('id', $ads->pluck('id'))->increment('current_impressions');
+
+            return AdvertisementResource::collection($ads);
         } catch (\Exception $e) {
-            return response()->json([
-                'error' => 'Failed to fetch advertisements',
-                'message' => $e->getMessage(),
-            ], 500);
+            Log::error('Failed to fetch ads', ['message' => $e->getMessage()]);
+            return response()->json(['error' => 'Failed to fetch advertisements'], 500);
         }
     }
 
     public function click(Request $request, $id)
     {
         try {
-            $ad = DB::table('advertisements')
-                ->where('id', $id)
-                ->where('is_active', true)
-                ->first();
-
-            if (!$ad) {
-                return response()->json(
-                    ['error' => 'Advertisement not found', 'success' => false],
-                    404
-                );
-            }
-
-            DB::table('advertisements')
-                ->where('id', $id)
-                ->increment('current_clicks');
-
+            $ad = Advertisement::where('id', $id)->where('is_active', true)->firstOrFail();
+            $ad->increment('current_clicks');
             return response()->json(['success' => true], 200);
         } catch (\Exception $e) {
-            return response()->json(
-                ['error' => 'Failed to track click', 'message' => $e->getMessage()],
-                500
-            );
+            return response()->json(['error' => 'Advertisement not found'], 404);
         }
     }
 }

@@ -2,49 +2,35 @@
 
 namespace App\Http\Controllers;
 
+use App\Http\Resources\NewsResource;
+use App\Models\News;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\DB;
 
 class SearchController extends Controller
 {
     public function search(Request $request)
     {
-        $query = $request->query('query');
-        $locale = $request->query('locale', 'fa');
-        $perPage = $request->query('perPage', 33);
-
-        if (empty($query)) {
+        $queryText = $request->query('query');
+        if (empty($queryText)) {
             return response()->json([
                 'data' => [],
-                'total' => 0,
                 'message' => 'عبارت جستجو وارد نشده است.'
             ]);
         }
 
-        $searchTerm = "%{$query}%";
+        $locale = $request->query('locale', app()->getLocale());
+        $perPage = $request->query('perPage', 15);
 
-        $news = DB::table('news')
-            ->where('status', 'published')
-            ->where(function($q) use ($searchTerm, $locale) {
-                $q->whereRaw("JSON_UNQUOTE(JSON_EXTRACT(title, '$.\"{$locale}\"')) LIKE ?", [$searchTerm])
-                  ->orWhereRaw("JSON_UNQUOTE(JSON_EXTRACT(content, '$.\"{$locale}\"')) LIKE ?", [$searchTerm]);
+        $news = News::query()
+            ->with(['newsSite', 'categories'])
+            ->published()
+            ->where(function($q) use ($queryText, $locale) {
+                $q->where("title->{$locale}", 'like', "%{$queryText}%")
+                  ->orWhere("content->{$locale}", 'like', "%{$queryText}%");
             })
-            ->select(
-                'id',
-                DB::raw("JSON_UNQUOTE(JSON_EXTRACT(title, '$.\"{$locale}\"')) as title"),
-                DB::raw("JSON_UNQUOTE(JSON_EXTRACT(content, '$.\"{$locale}\"')) as content"),
-               'cover',
-                'slug',
-                'published_at'
-            )
             ->orderBy('published_at', 'desc')
             ->paginate($perPage);
 
-        return response()->json([
-            'data' => $news->items(),
-            'total' => $news->total(),
-            'current_page' => $news->currentPage(),
-            'last_page' => $news->lastPage(),
-        ]);
+        return NewsResource::collection($news);
     }
 }
