@@ -364,7 +364,32 @@ class CrawlNewsContentJob implements ShouldQueue
     private function saveNews(array $translations): int
     {
         return DB::transaction(function () use ($translations) {
+            $mainTitle = $translations['title']['fa'] ?? $translations['title']['en'] ?? array_values($translations['title'])[0];
+            $titleHash = md5(Str::lower(trim($mainTitle)));
+
+            // بررسی تکراری بودن بر اساس هش عنوان
+            $existingNews = DB::table('news')
+                ->where('title_hash', $titleHash)
+                ->orWhere('source_url', $this->url)
+                ->first();
+
+            if ($existingNews) {
+                Log::info('⚠️ خبر تکراری مشاهده شد. آپدیت محتوا انجام می‌شود.', ['id' => $existingNews->id]);
+
+                DB::table('news')->where('id', $existingNews->id)->update([
+                    'title' => json_encode($translations['title'], JSON_UNESCAPED_UNICODE),
+                    'content' => json_encode($translations['content'], JSON_UNESCAPED_UNICODE),
+                    'updated_at' => now(),
+                ]);
+
+                return $existingNews->id;
+            }
+
             $englishTitle = $translations['title']['en'] ?? 'news-' . uniqid();
+<<<<<<< HEAD
+=======
+            $slug = Str::slug(Str::limit($englishTitle, 100));
+>>>>>>> 03f2bcfb7c672950ca47d97f576062756c996c7e
 
             // اضافه کردن تاریخ به اسلاگ برای جلوگیری از تداخل
             // فرمت: عنوان-انگلیسی-YYYY-MM-DD
@@ -381,20 +406,20 @@ class CrawlNewsContentJob implements ShouldQueue
                 $slug = $originalSlug . '-' . $counter++;
             }
 
-            DB::table('news')->updateOrInsert(
-                ['source_url' => $this->url],
-                [
-                    'title' => json_encode($translations['title'], JSON_UNESCAPED_UNICODE),
-                    'content' => json_encode($translations['content'], JSON_UNESCAPED_UNICODE),
-                    'slug' => $slug,
-                    'news_site_id' => $this->siteId,
-                    'status' => 'published',
-                    'published_at' => now(),
-                    'updated_at' => now(),
-                ]
-            );
+            $newsId = DB::table('news')->insertGetId([
+                'title' => json_encode($translations['title'], JSON_UNESCAPED_UNICODE),
+                'content' => json_encode($translations['content'], JSON_UNESCAPED_UNICODE),
+                'title_hash' => $titleHash,
+                'slug' => $slug,
+                'source_url' => $this->url,
+                'news_site_id' => $this->siteId,
+                'status' => 'published',
+                'published_at' => now(),
+                'created_at' => now(),
+                'updated_at' => now(),
+            ]);
 
-            return DB::table('news')->where('source_url', $this->url)->value('id');
+            return $newsId;
         });
     }
 

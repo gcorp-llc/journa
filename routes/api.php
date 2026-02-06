@@ -1,14 +1,25 @@
 <?php
 
 use App\Http\Controllers\AdController;
+use App\Http\Controllers\CategoryController;
 use App\Http\Controllers\NewsController;
 use App\Http\Controllers\SearchController;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 
 Route::prefix('v1')->group(function () {
+<<<<<<< HEAD
     Route::get('all', [NewsController::class, 'all'])
     ->name('news.all');
+=======
+    Route::get('all', [NewsController::class, 'all'])->name('news.all');
+    Route::get('news', [NewsController::class, 'index'])->name('news.index');
+    Route::get('news/{slug}', [NewsController::class, 'show'])->name('news.show');
+    Route::post('news/{slug}/increment-views', [NewsController::class, 'incrementViews'])->name('news.incrementViews');
+
+    Route::get('categories', [CategoryController::class, 'index'])->name('categories.index');
+    Route::get('categories/{slug}', [CategoryController::class, 'show'])->name('categories.show');
+>>>>>>> 03f2bcfb7c672950ca47d97f576062756c996c7e
 
     Route::get('news', [NewsController::class, 'index'])
     ->name('news.index');
@@ -22,10 +33,13 @@ Route::prefix('v1')->group(function () {
     Route::post('/ads/{id}/click', [AdController::class, 'click'])
     ->name('ads.click');
 
+<<<<<<< HEAD
     Route::get('search', [SearchController::class, 'search'])
     ->name('search.index');
 
     Route::post('news/{slug}/increment-views', [NewsController::class, 'incrementViews'])
     ->name('news.incrementViews');
 
+=======
+>>>>>>> 03f2bcfb7c672950ca47d97f576062756c996c7e
 });

@@ -3,12 +3,13 @@
 namespace App\Filament\Resources\News\Schemas;
 
 use Filament\Forms\Components\DateTimePicker;
+use Filament\Forms\Components\FileUpload;
 use Filament\Forms\Components\RichEditor;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\TextInput;
-use Filament\Forms\Components\Textarea;
-use Filament\Schemas\Components\Section;
+use Filament\Forms\Components\Section;
 use Filament\Schemas\Schema;
+use Illuminate\Support\Str;
 
 class NewsForm
 {
@@ -16,35 +17,69 @@ class NewsForm
     {
         return $schema
             ->components([
-                Section::make(__('Content'))
+                Section::make(__('News Content'))
                     ->schema([
-                        Textarea::make('title')
-                            ->required(),
+                        TextInput::make('title')
+                            ->label(__('Title'))
+                            ->required()
+                            ->live(onBlur: true)
+                            ->afterStateUpdated(fn ($state, callable $set) => $set('slug', Str::slug($state))),
+
                         TextInput::make('slug')
-                            ->required(),
-                        TextInput::make('cover'),
+                            ->label(__('Slug'))
+                            ->required()
+                            ->unique('news', 'slug', ignoreRecord: true),
+
+                        FileUpload::make('cover')
+                            ->label(__('Cover Image'))
+                            ->image()
+                            ->directory('content_images/' . now()->format('Y-m-d'))
+                            ->imageEditor(),
+
                         TextInput::make('source_url')
-                            ->url(),
-                    ])->columns(2)
-                ->columnSpanFull(),
+                            ->label(__('Source URL'))
+                            ->url()
+                            ->columnSpanFull(),
+                    ])->columns(2),
 
-                RichEditor::make('content')
-                    ->required()
-                    ->columnSpanFull(),
+                Section::make(__('Body'))
+                    ->schema([
+                        RichEditor::make('content')
+                            ->label(__('Content'))
+                            ->required()
+                            ->columnSpanFull(),
+                    ]),
 
-                DateTimePicker::make('published_at')
-                    ->required(),
-                Select::make('status')
-                    ->options(['draft' => 'Draft', 'published' => 'Published', 'archived' => 'Archived'])
-                    ->default('draft')
-                    ->required(),
-                TextInput::make('views')
-                    ->required()
-                    ->numeric()
-                    ->default(0),
-                TextInput::make('news_site_id')
-                    ->required()
-                    ->numeric(),
+                Section::make(__('Metadata'))
+                    ->schema([
+                        DateTimePicker::make('published_at')
+                            ->label(__('Published At'))
+                            ->default(now())
+                            ->required(),
+
+                        Select::make('status')
+                            ->label(__('Status'))
+                            ->options([
+                                'draft' => 'Draft',
+                                'published' => 'Published',
+                                'archived' => 'Archived'
+                            ])
+                            ->default('draft')
+                            ->required(),
+
+                        Select::make('news_site_id')
+                            ->label(__('News Site'))
+                            ->relationship('newsSite', 'name')
+                            ->searchable()
+                            ->preload()
+                            ->required(),
+
+                        TextInput::make('views')
+                            ->label(__('Views'))
+                            ->numeric()
+                            ->default(0)
+                            ->disabled(),
+                    ])->columns(2),
             ]);
     }
 }
