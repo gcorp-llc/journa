@@ -2,35 +2,40 @@
 
 namespace App\Http\Controllers;
 
-use App\Http\Resources\NewsResource;
-use App\Models\News;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 
 class SearchController extends Controller
 {
     public function search(Request $request)
     {
-        $queryText = $request->query('query');
-        if (empty($queryText)) {
-            return response()->json([
-                'data' => [],
-                'message' => 'عبارت جستجو وارد نشده است.'
-            ]);
-        }
+        $locale = $request->get('lang', $request->header('x-lang', 'fa'));
+        $term = $request->query('q');
 
-        $locale = $request->query('locale', app()->getLocale());
-        $perPage = $request->query('perPage', 15);
+        if (!$term) return response()->json(['data' => [], 'next_page_url' => null]);
 
-        $news = News::query()
-            ->with(['newsSite', 'categories'])
-            ->published()
-            ->where(function($q) use ($queryText, $locale) {
-                $q->where("title->{$locale}", 'like', "%{$queryText}%")
-                  ->orWhere("content->{$locale}", 'like', "%{$queryText}%");
+        $news = DB::table('news')
+            ->join('news_sites', 'news.news_site_id', '=', 'news_sites.id')
+            ->where('news.status', 'published')
+            ->where(function ($query) use ($term, $locale) {
+                // جستجوی مستقیم در فیلد JSON
+                $query->where("news.title->{$locale}", 'like', "%{$term}%")
+                    ->orWhere("news.content->{$locale}", 'like', "%{$term}%");
             })
-            ->orderBy('published_at', 'desc')
-            ->paginate($perPage);
+            ->select([
+                'news.id',
+                'news.slug',
+                'news.cover',
+                'news.published_at',
+                DB::raw("JSON_UNQUOTE(JSON_EXTRACT(news.title, '$.$locale')) as title"),
+                DB::raw("JSON_UNQUOTE(JSON_EXTRACT(news_sites.name, '$.$locale')) as news_site_name")
+            ])
+            ->orderBy('news.published_at', 'desc')
+            ->simplePaginate(33);
 
-        return NewsResource::collection($news);
+        return response()->json([
+            'data' => $news->items(),
+            'next_page_url' => $news->nextPageUrl()
+        ]);
     }
 }

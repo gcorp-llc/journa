@@ -1,56 +1,62 @@
 <?php
 
-namespace App\Http\Controllers;
+namespace App\Models;
 
-use App\Http\Resources\AdvertisementResource;
-use App\Models\Advertisement;
-use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Log;
+use Illuminate\Database\Eloquent\Model;
+use Spatie\Translatable\HasTranslations;
+use Illuminate\Database\Eloquent\Builder;
 
-class AdController extends Controller
+class Advertisement extends Model
 {
-    public function index(Request $request)
+    use HasTranslations;
+
+    protected $fillable = [
+        'title',
+        'subject',
+        'cover',
+        'content',
+        'destination_url',
+        'start_date',
+        'end_date',
+        'max_clicks',
+        'max_impressions',
+        'current_impressions',
+        'current_clicks',
+        'is_active'
+    ];
+
+    // فیلدهای قابل ترجمه بر اساس پکیج Spatie
+    public $translatable = ['title', 'subject', 'content'];
+
+    protected $casts = [
+        'title' => 'array',
+        'subject' => 'array',
+        'content' => 'array',
+        'is_active' => 'boolean',
+        'start_date' => 'datetime',
+        'end_date' => 'datetime',
+    ];
+
+    /**
+     * Scope برای فیلتر تبلیغات فعال و معتبر (Query Building)
+     * این متد سرعت کوئری‌ها را در کنترلر بالا می‌برد
+     */
+    public function scopeActive(Builder $query): Builder
     {
-        try {
-            $ads = Advertisement::query()
-                ->where('is_active', true)
-                ->where(function ($query) {
-                    $query->whereNull('start_date')
-                        ->orWhere('start_date', '<=', now());
-                })
-                ->where(function ($query) {
-                    $query->whereNull('end_date')
-                        ->orWhere('end_date', '>=', now());
-                })
-                ->where(function ($query) {
-                    $query->whereNull('max_impressions')
-                        ->orWhereColumn('current_impressions', '<', 'max_impressions');
-                })
-                ->where(function ($query) {
-                    $query->whereNull('max_clicks')
-                        ->orWhereColumn('current_clicks', '<', 'max_clicks');
-                })
-                ->latest()
-                ->get();
-
-            // ثبت Impression
-            Advertisement::whereIn('id', $ads->pluck('id'))->increment('current_impressions');
-
-            return AdvertisementResource::collection($ads);
-        } catch (\Exception $e) {
-            Log::error('Failed to fetch ads', ['message' => $e->getMessage()]);
-            return response()->json(['error' => 'Failed to fetch advertisements'], 500);
-        }
-    }
-
-    public function click(Request $request, $id)
-    {
-        try {
-            $ad = Advertisement::where('id', $id)->where('is_active', true)->firstOrFail();
-            $ad->increment('current_clicks');
-            return response()->json(['success' => true], 200);
-        } catch (\Exception $e) {
-            return response()->json(['error' => 'Advertisement not found'], 404);
-        }
+        return $query->where('is_active', true)
+            ->where(function ($q) {
+                $q->whereNull('start_date')->orWhere('start_date', '<=', now());
+            })
+            ->where(function ($q) {
+                $q->whereNull('end_date')->orWhere('end_date', '>=', now());
+            })
+            ->where(function ($q) {
+                $q->whereNull('max_impressions')
+                    ->orWhereColumn('current_impressions', '<', 'max_impressions');
+            })
+            ->where(function ($q) {
+                $q->whereNull('max_clicks')
+                    ->orWhereColumn('current_clicks', '<', 'max_clicks');
+            });
     }
 }
