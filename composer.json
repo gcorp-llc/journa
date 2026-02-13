@@ -19,6 +19,7 @@
         "mcamara/laravel-localization": "^2.3",
         "morilog/jalali": "^3.4",
         "phiki/phiki": "^2.0",
+        "spatie/browsershot": "^5.2",
         "spatie/crawler": "^8.4",
         "spatie/laravel-sitemap": "^7.3",
         "stichoza/google-translate-php": "^5.3"

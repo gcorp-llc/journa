@@ -40,8 +40,15 @@ class CrawlNewsContentJob implements ShouldQueue
                 'job_id' => $jobId,
             ]);
 
-            $response = $this->sendRequest($this->url, 'get', ['job_id' => $jobId]);
-            $html = $response->body();
+            // برخی سایت‌ها نیاز به شبیه‌سازی کامل مرورگر دارند
+            $useBrowsershot = in_array($this->siteName, ['The New York Times', 'Bloomberg', 'The Wall Street Journal', 'Financial Times', 'Guardian']);
+
+            if ($useBrowsershot) {
+                $html = $this->getHtmlWithBrowsershot($this->url);
+            } else {
+                $response = $this->sendRequest($this->url, 'get', ['job_id' => $jobId]);
+                $html = $response->body();
+            }
 
             if (strlen($html) < 500) {
                 throw new \Exception('صفحه خالی یا ناقص دریافت شد');
@@ -212,12 +219,18 @@ class CrawlNewsContentJob implements ShouldQueue
     private function normalizeUrl(string $link): string
     {
         $link = trim($link);
+
+        // حذف پارامترهای کوئری (مثل UTM) برای جلوگیری از تکرار
+        if (str_contains($link, '?')) {
+            $link = explode('?', $link)[0];
+        }
+
         if (str_starts_with($link, 'http')) {
             return $link;
         }
 
         $parsed = parse_url($this->url);
-        $base = $parsed['scheme'] . '://' . $parsed['host'];
+        $base = ($parsed['scheme'] ?? 'https') . '://' . ($parsed['host'] ?? '');
 
         return str_starts_with($link, '/') ? $base . $link : $base . '/' . $link;
     }
@@ -365,12 +378,21 @@ class CrawlNewsContentJob implements ShouldQueue
     {
         return DB::transaction(function () use ($translations) {
             $mainTitle = $translations['title']['fa'] ?? $translations['title']['en'] ?? array_values($translations['title'])[0];
-            $titleHash = md5(Str::lower(trim($mainTitle)));
 
-            // بررسی تکراری بودن بر اساس هش عنوان
+            // نرمال‌سازی عنوان برای هش دقیق‌تر و جلوگیری از تکرار
+            $normalizedTitle = Str::of($mainTitle)
+                ->stripTags()
+                ->replaceMatches('/\s+/', ' ')
+                ->trim()
+                ->lower();
+
+            $titleHash = md5($normalizedTitle);
+            $normalizedUrl = $this->normalizeUrl($this->url);
+
+            // بررسی تکراری بودن بر اساس هش عنوان یا آدرس دقیق (نرمال شده)
             $existingNews = DB::table('news')
                 ->where('title_hash', $titleHash)
-                ->orWhere('source_url', $this->url)
+                ->orWhere('source_url', $normalizedUrl)
                 ->first();
 
             if ($existingNews) {
@@ -386,10 +408,6 @@ class CrawlNewsContentJob implements ShouldQueue
             }
 
             $englishTitle = $translations['title']['en'] ?? 'news-' . uniqid();
-<<<<<<< HEAD
-=======
-            $slug = Str::slug(Str::limit($englishTitle, 100));
->>>>>>> 03f2bcfb7c672950ca47d97f576062756c996c7e
 
             // اضافه کردن تاریخ به اسلاگ برای جلوگیری از تداخل
             // فرمت: عنوان-انگلیسی-YYYY-MM-DD
@@ -411,7 +429,7 @@ class CrawlNewsContentJob implements ShouldQueue
                 'content' => json_encode($translations['content'], JSON_UNESCAPED_UNICODE),
                 'title_hash' => $titleHash,
                 'slug' => $slug,
-                'source_url' => $this->url,
+                'source_url' => $normalizedUrl,
                 'news_site_id' => $this->siteId,
                 'status' => 'published',
                 'published_at' => now(),

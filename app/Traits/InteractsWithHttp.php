@@ -5,6 +5,7 @@ namespace App\Traits;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
 use GuzzleHttp\Cookie\CookieJar;
+use Spatie\Browsershot\Browsershot;
 
 trait InteractsWithHttp
 {
@@ -20,6 +21,20 @@ trait InteractsWithHttp
             'Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:125.0) Gecko/20100101 Firefox/125.0',
         ];
         return $agents[array_rand($agents)];
+    }
+
+    /**
+     * دریافت محتوای صفحه با استفاده از مرورگر واقعی (Browsershot/Puppeteer)
+     * برای عبور از سدهای ضد ربات
+     */
+    protected function getHtmlWithBrowsershot(string $url): string
+    {
+        return Browsershot::url($url)
+            ->userAgent($this->getRandomUserAgent())
+            ->timeout(60)
+            ->waitUntilNetworkIdle()
+            ->setOption('args', ['--no-sandbox', '--disable-setuid-sandbox'])
+            ->bodyHtml();
     }
 
     /**
