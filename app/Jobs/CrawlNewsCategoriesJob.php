@@ -43,8 +43,15 @@ class CrawlNewsCategoriesJob implements ShouldQueue
 
             Log::info("🔍 [خزش لیست خبرها]", ['url' => $this->url, 'category_id' => $this->categoryId]);
 
-            $response = $this->sendRequest($this->url, 'get', ['job_id' => $this->jobId]);
-            $html = $response->body();
+            // استفاده از Browsershot برای سایت‌های خاص
+            $useBrowsershot = in_array($siteName, ['The New York Times', 'Bloomberg', 'The Wall Street Journal', 'Financial Times', 'Guardian']);
+
+            if ($useBrowsershot) {
+                $html = $this->getHtmlWithBrowsershot($this->url);
+            } else {
+                $response = $this->sendRequest($this->url, 'get', ['job_id' => $this->jobId]);
+                $html = $response->body();
+            }
 
             $crawler = new Crawler($html);
             $links = $crawler->filter($config['category_selectors']['links'])->each(function (Crawler $node) {
