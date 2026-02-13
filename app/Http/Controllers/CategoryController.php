@@ -50,6 +50,7 @@ class CategoryController extends Controller
                 'news.id',
                 'news.slug',
                 'news.cover',
+                'news.views',
                 'news.published_at',
                 DB::raw("JSON_UNQUOTE(JSON_EXTRACT(news.title, '$.$locale')) as title"),
                 DB::raw("JSON_UNQUOTE(JSON_EXTRACT(news_sites.name, '$.$locale')) as news_site_name")

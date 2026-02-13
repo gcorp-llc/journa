@@ -26,12 +26,14 @@ class SearchController extends Controller
                 'news.id',
                 'news.slug',
                 'news.cover',
+                'news.views',
                 'news.published_at',
                 DB::raw("JSON_UNQUOTE(JSON_EXTRACT(news.title, '$.$locale')) as title"),
                 DB::raw("JSON_UNQUOTE(JSON_EXTRACT(news_sites.name, '$.$locale')) as news_site_name")
             ])
             ->orderBy('news.published_at', 'desc')
-            ->simplePaginate(33);
+            ->simplePaginate(33)
+            ->appends($request->query());
 
         return response()->json([
             'data' => $news->items(),
